@@ -689,6 +689,9 @@ select option{background:var(--bg2)}
   <div class="ctx-item" onclick="ctxAction('paste')">Paste <span class="ctx-shortcut">⌘V</span></div>
   <div class="ctx-item" onclick="ctxAction('duplicate')">Duplicate <span class="ctx-shortcut">⌘D</span></div>
   <div class="ctx-item" onclick="ctxAction('editText')">Edit Text <span class="ctx-shortcut">Enter</span></div>
+  <div class="ctx-item" onclick="ctxAction('copyStyle')">Copy Style <span class="ctx-shortcut">⌘⇧C</span></div>
+  <div class="ctx-item" onclick="ctxAction('pasteStyle')">Paste Style <span class="ctx-shortcut">⌘⇧V</span></div>
+  <div class="ctx-item" onclick="ctxAction('toggleLock')">Lock / Unlock</div>
   <div class="ctx-sep"></div>
   <div class="ctx-item" onclick="ctxAction('group')">Group <span class="ctx-shortcut">⌘G</span></div>
   <div class="ctx-item" onclick="ctxAction('ungroup')">Ungroup</div>
@@ -754,6 +757,7 @@ const state = {
   elements: [],
   selected: [],
   clipboard: null,
+  styleClipboard: null,
   hoveredId: null,
   frames: [
     {id:'frame1', name:'Desktop', x:0, y:0, w:1280, h:800, bg:'#ffffff'}
@@ -1032,6 +1036,44 @@ function canvasToFrame(cx, cy) {
   return {frameId: null, lx: ix, ly: iy, gx: ix, gy: iy};
 }
 
+function isLocked(el) {
+  return !!el?.locked;
+}
+
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function findFreeTextPosition(frameId, x, y, w, h) {
+  const frame = state.frames.find(f => f.id === frameId);
+  if (!frame) return {x, y};
+  let px = Math.max(8, Math.round(x));
+  let py = Math.max(8, Math.round(y));
+  const inFrame = e => e.frameId === frameId && (e.type === 'text' || e.type === 'image' || e.type === 'rect');
+  const blockers = state.elements.filter(inFrame);
+
+  for (let i = 0; i < 240; i++) {
+    const candidate = {x: px, y: py, w, h};
+    const collision = blockers.some(el => rectsOverlap(candidate, {x: el.x, y: el.y, w: el.w, h: el.h}));
+    if (!collision) return {x: px, y: py};
+    py += h + 8;
+    if (py + h > frame.h - 8) {
+      py = 16 + ((i % 5) * 10);
+      px += Math.round(Math.min(80, w * 0.2) + 16);
+      if (px + w > frame.w - 8) px = 16;
+    }
+  }
+  return {x: px, y: py};
+}
+
+function getStyleKeysForType(type) {
+  const base = ['opacity'];
+  if (type === 'text') return [...base, 'fill', 'fontSize', 'fontWeight', 'fontFamily', 'textAlign', 'lineHeight', 'letterSpacing'];
+  if (type === 'line') return [...base, 'stroke', 'strokeW'];
+  if (type === 'image') return [...base, 'r', 'objectFit'];
+  return [...base, 'fill', 'stroke', 'strokeW', 'r'];
+}
+
 function getElAtPoint(cx, cy) {
   const {frameId, lx, ly} = canvasToFrame(cx, cy);
   if (!frameId) return null;
@@ -1039,6 +1081,7 @@ function getElAtPoint(cx, cy) {
   // Reverse so top elements are hit first
   for (let i = frameEls.length - 1; i >= 0; i--) {
     const el = frameEls[i];
+    if (isLocked(el)) continue;
     if (lx >= el.x && lx <= el.x+el.w && ly >= el.y && ly <= el.y+el.h) return el;
   }
   return null;
@@ -1072,6 +1115,14 @@ function canvasMouseDown(e) {
         if (state.selected.includes(hit.id)) state.selected = state.selected.filter(i => i !== hit.id);
         else state.selected.push(hit.id);
       }
+      if (hit.type === 'text' && e.detail >= 2) {
+        state.dragging = false;
+        state.dragEl = null;
+        state.dragMoved = false;
+        render(); renderProps();
+        setTimeout(() => editSelectedText(), 0);
+        return;
+      }
       // Start drag
       state.dragging = true;
       state.dragEl = hit.id;
@@ -1079,11 +1130,6 @@ function canvasMouseDown(e) {
       state.dragMoved = false;
       const el = state.elements.find(el => el.id === hit.id);
       state.dragElStart = {x: el.x, y: el.y};
-      if (hit.type === 'text' && e.detail >= 2) {
-        render(); renderProps();
-        setTimeout(() => editSelectedText(), 0);
-        return;
-      }
     } else {
       const fr = canvasToFrame(cx, cy);
       if (fr.frameId) state.activeFrame = fr.frameId;
@@ -1094,15 +1140,23 @@ function canvasMouseDown(e) {
     }
     render(); renderProps();
   } else if (state.tool === 'T') {
+    const hit = getElAtPoint(cx, cy);
+    if (hit?.type === 'text') {
+      state.selected = [hit.id];
+      render(); renderProps();
+      setTimeout(() => startTextEdit(hit, e.clientX, e.clientY), 0);
+      return;
+    }
     const {frameId, lx, ly} = canvasToFrame(cx, cy);
     if (!frameId) return;
     state.activeFrame = frameId;
     const id = 'el' + (++state.nextId);
     const textVal = (document.getElementById('quick-text-input')?.value || '').trim() || 'Type something';
+    const pos = findFreeTextPosition(frameId, lx, ly, 260, 40);
     const newEl = {
       id, type:'text', name:'Text', text:textVal, fill:'#1a1a1a',
       fontSize:16, fontWeight:'400', textAlign:'left',
-      x:Math.round(lx), y:Math.round(ly), w:260, h:32, frameId, opacity:1
+      x:pos.x, y:pos.y, w:260, h:40, frameId, opacity:1
     };
     state.elements.push(newEl);
     state.selected = [id];
@@ -1145,6 +1199,7 @@ function canvasMouseMove(e) {
     if (!state.dragMoved && (Math.abs(dx) > 1 || Math.abs(dy) > 1)) state.dragMoved = true;
     if (!state.dragMoved) return;
     const el = state.elements.find(el => el.id === state.dragEl);
+    if (isLocked(el)) return;
     if (el) {
       el.x = Math.round(state.dragElStart.x + dx);
       el.y = Math.round(state.dragElStart.y + dy);
@@ -1156,6 +1211,7 @@ function canvasMouseMove(e) {
   if (state.resizing) {
     const el = state.elements.find(el => el.id === state.selected[0]);
     if (!el) return;
+    if (isLocked(el)) return;
     const dx = (e.clientX - state.resizeStart.x) / state.zoom;
     const dy = (e.clientY - state.resizeStart.y) / state.zoom;
     const h = state.resizeHandle;
@@ -1295,13 +1351,15 @@ function canvasMouseUp(e) {
 }
 
 function canvasDblClick(e) {
-  if (state.tool !== 'V') return;
+  if (state.textEditing) return;
   const wrap = document.getElementById('canvas-wrap');
   const rect = wrap.getBoundingClientRect();
   const cx = e.clientX - rect.left;
   const cy = e.clientY - rect.top;
   const hit = getElAtPoint(cx, cy);
   if (hit && hit.type === 'text') {
+    state.selected = [hit.id];
+    render(); renderProps();
     startTextEdit(hit, e.clientX, e.clientY);
   }
 }
@@ -1430,9 +1488,53 @@ function ctxAction(action) {
     navigator.clipboard?.writeText(code);
   } else if (action === 'editText') {
     editSelectedText();
+  } else if (action === 'copyStyle') {
+    copyStyleSelected();
+  } else if (action === 'pasteStyle') {
+    pasteStyleSelected();
+  } else if (action === 'toggleLock') {
+    toggleLockSelected();
   } else if (action === 'group') {
     notify('Group — coming in next build');
   }
+}
+
+function copyStyleSelected() {
+  if (state.selected.length !== 1) { notify('Select one layer to copy style', 'warn'); return; }
+  const el = state.elements.find(e => e.id === state.selected[0]);
+  if (!el) return;
+  const keys = getStyleKeysForType(el.type);
+  const style = {};
+  keys.forEach(k => { if (el[k] !== undefined) style[k] = el[k]; });
+  style.type = el.type;
+  state.styleClipboard = style;
+  notify('Style copied');
+}
+
+function pasteStyleSelected() {
+  if (!state.styleClipboard) { notify('No copied style yet', 'warn'); return; }
+  const targets = state.elements.filter(e => state.selected.includes(e.id) && !isLocked(e));
+  if (!targets.length) return;
+  targets.forEach(el => {
+    const keys = getStyleKeysForType(el.type);
+    keys.forEach(k => {
+      if (state.styleClipboard[k] !== undefined) el[k] = state.styleClipboard[k];
+    });
+  });
+  pushHistory();
+  render(); renderProps();
+  notify('Style pasted');
+}
+
+function toggleLockSelected() {
+  const targets = state.elements.filter(e => state.selected.includes(e.id));
+  if (!targets.length) return;
+  const shouldLock = targets.some(e => !e.locked);
+  targets.forEach(el => { el.locked = shouldLock; });
+  if (shouldLock) state.selected = [];
+  pushHistory();
+  render(); renderLayers(); renderProps();
+  notify(shouldLock ? 'Layer(s) locked' : 'Layer(s) unlocked');
 }
 
 function elToHTML(el) {
@@ -1507,6 +1609,8 @@ document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'd') { e.preventDefault(); ctxAction('duplicate'); }
   if ((e.metaKey || e.ctrlKey) && e.key === 'c') ctxAction('copy');
   if ((e.metaKey || e.ctrlKey) && e.key === 'v') ctxAction('paste');
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'C' || e.key === 'c')) { e.preventDefault(); ctxAction('copyStyle'); }
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'V' || e.key === 'v')) { e.preventDefault(); ctxAction('pasteStyle'); }
   if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); }
   if ((e.metaKey || e.ctrlKey) && e.key === 'y') { e.preventDefault(); redo(); }
   if (e.key === '+' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); zoomIn(); }
@@ -1593,6 +1697,7 @@ function renderLayers() {
     html += `<div class="layer-item ${sel?'selected':''}" onclick="selectFromLayer('${el.id}')" data-id="${el.id}">
       <span class="layer-icon" style="font-size:11px">${icons[el.type]||'□'}</span>
       <span class="layer-name">${el.name||el.type}</span>
+      <span class="layer-vis" onclick="toggleLock(event,'${el.id}')" title="Lock">${el.locked?'🔒':'🔓'}</span>
       <span class="layer-vis" onclick="toggleVis(event,'${el.id}')">👁</span>
     </div>`;
   });
@@ -1608,6 +1713,16 @@ function toggleVis(e, id) {
   e.stopPropagation();
   const el = state.elements.find(el => el.id === id);
   if (el) { el.opacity = el.opacity === 0 ? 1 : 0; render(); }
+}
+
+function toggleLock(e, id) {
+  e.stopPropagation();
+  const el = state.elements.find(item => item.id === id);
+  if (!el) return;
+  el.locked = !el.locked;
+  if (el.locked && state.selected.includes(el.id)) state.selected = state.selected.filter(s => s !== el.id);
+  pushHistory();
+  render(); renderLayers(); renderProps();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1753,6 +1868,7 @@ function renderProps() {
       <textarea class="prop-input-wide" rows="3" style="resize:vertical" onchange="updateEl('${el.id}','text',this.value)">${el.text||''}</textarea>
       <div style="margin-top:8px">
         <button class="tbtn" style="width:100%;font-size:11px" onclick="editSelectedText()">Edit on Canvas</button>
+        <button class="tbtn" style="width:100%;font-size:11px;margin-top:6px" onclick="autoSizeSelectedText()">Auto Size Text</button>
       </div>
     </div>`;
   }
@@ -1789,6 +1905,9 @@ function renderProps() {
       <button class="tbtn" onclick="ctxAction('duplicate')" style="font-size:11px;text-align:center">Duplicate</button>
       <button class="tbtn" onclick="ctxAction('bringFront')" style="font-size:11px;text-align:center">Bring Front</button>
       <button class="tbtn" onclick="ctxAction('sendBack')" style="font-size:11px;text-align:center">Send Back</button>
+      <button class="tbtn" onclick="ctxAction('copyStyle')" style="font-size:11px;text-align:center">Copy Style</button>
+      <button class="tbtn" onclick="ctxAction('pasteStyle')" style="font-size:11px;text-align:center">Paste Style</button>
+      <button class="tbtn" onclick="ctxAction('toggleLock')" style="font-size:11px;text-align:center">${el.locked?'Unlock':'Lock'}</button>
       <button class="tbtn" onclick="ctxAction('delete')" style="font-size:11px;text-align:center;color:var(--red)">Delete</button>
     </div>
   </div>`;
@@ -1799,6 +1918,10 @@ function renderProps() {
 function updateEl(id, prop, value) {
   const el = state.elements.find(e => e.id === id);
   if (!el) return;
+  if (isLocked(el) && prop !== 'locked') {
+    notify('Layer is locked', 'warn');
+    return;
+  }
   el[prop] = value;
   pushHistory();
   render(); renderLayers();
@@ -1939,10 +2062,11 @@ function quickAddTextFromBar() {
   const frame = state.frames.find(f => f.id === state.activeFrame) || state.frames[0];
   if (!frame) return;
   const id = 'el' + (++state.nextId);
+  const pos = findFreeTextPosition(frame.id, Math.round(frame.w * 0.08), Math.round(frame.h * 0.12), 360, 42);
   state.elements.push({
     id, type:'text', name:'Text', text:value, fill:'#1a1a1a',
     fontSize:18, fontWeight:'500', textAlign:'left',
-    x:Math.round(frame.w * 0.08), y:Math.round(frame.h * 0.12), w:360, h:40,
+    x:pos.x, y:pos.y, w:360, h:42,
     frameId:frame.id, opacity:1
   });
   state.selected = [id];
@@ -1959,6 +2083,7 @@ function editSelectedText() {
     notify('Select a text layer first', 'warn');
     return;
   }
+  if (isLocked(el)) { notify('Layer is locked', 'warn'); return; }
   const frame = state.frames.find(f => f.id === el.frameId);
   if (!frame) return;
   const wrap = document.getElementById('canvas-wrap');
@@ -1966,6 +2091,32 @@ function editSelectedText() {
   const fx = (state.panX + (frame.x + el.x) * state.zoom) + r.left;
   const fy = (state.panY + (frame.y + el.y) * state.zoom) + r.top;
   startTextEdit(el, fx, fy);
+}
+
+function autoSizeSelectedText() {
+  if (state.selected.length !== 1) return;
+  const el = state.elements.find(e => e.id === state.selected[0]);
+  if (!el || el.type !== 'text') return;
+  if (isLocked(el)) { notify('Layer is locked', 'warn'); return; }
+  const measurer = document.createElement('div');
+  measurer.style.position = 'fixed';
+  measurer.style.left = '-9999px';
+  measurer.style.top = '-9999px';
+  measurer.style.whiteSpace = 'pre-wrap';
+  measurer.style.wordBreak = 'break-word';
+  measurer.style.width = `${Math.max(60, el.w)}px`;
+  measurer.style.fontSize = `${el.fontSize || 14}px`;
+  measurer.style.fontWeight = `${el.fontWeight || '400'}`;
+  measurer.style.fontFamily = el.fontFamily || 'inherit';
+  measurer.style.lineHeight = String(el.lineHeight || '1.4');
+  measurer.style.letterSpacing = el.letterSpacing ? `${el.letterSpacing}px` : 'normal';
+  measurer.textContent = el.text || '';
+  document.body.appendChild(measurer);
+  el.h = Math.max(24, Math.ceil(measurer.scrollHeight + 4));
+  measurer.remove();
+  pushHistory();
+  render(); renderProps();
+  notify('Text auto-sized');
 }
 
 function triggerImageImport() {
