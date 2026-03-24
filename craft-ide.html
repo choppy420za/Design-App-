@@ -1087,16 +1087,12 @@ function isLocked(el) {
   return !!el?.locked;
 }
 
-function rectsOverlap(a, b) {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-}
-
 function findFreeTextPosition(frameId, x, y, w, h) {
   const frame = state.frames.find(f => f.id === frameId);
   if (!frame) return {x, y};
   let px = Math.max(8, Math.round(x));
   let py = Math.max(8, Math.round(y));
-  const inFrame = e => e.frameId === frameId && e.type === 'text' && e.opacity !== 0;
+  const inFrame = e => e.frameId === frameId && !isLocked(e) && e.opacity !== 0;
   const blockers = state.elements.filter(inFrame);
 
   for (let i = 0; i < 240; i++) {
@@ -1119,6 +1115,38 @@ function getStyleKeysForType(type) {
   if (type === 'line') return [...base, 'stroke', 'strokeW'];
   if (type === 'image') return [...base, 'r', 'objectFit'];
   return [...base, 'fill', 'stroke', 'strokeW', 'r'];
+}
+
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function measureTextHeight(el) {
+  const frame = state.frames.find(f => f.id === el.frameId);
+  const maxH = frame ? frame.h : 2000;
+  if (!measureTextHeight.node) {
+    const n = document.createElement('div');
+    n.style.position = 'fixed';
+    n.style.left = '-9999px';
+    n.style.top = '-9999px';
+    n.style.whiteSpace = 'pre-wrap';
+    n.style.wordBreak = 'break-word';
+    n.style.padding = '0';
+    n.style.margin = '0';
+    n.style.boxSizing = 'border-box';
+    measureTextHeight.node = n;
+    document.body.appendChild(n);
+  }
+  const n = measureTextHeight.node;
+  n.style.width = `${Math.max(60, el.w)}px`;
+  n.style.fontSize = `${el.fontSize || 14}px`;
+  n.style.fontWeight = `${el.fontWeight || '400'}`;
+  n.style.fontFamily = el.fontFamily || 'inherit';
+  n.style.lineHeight = String(el.lineHeight || '1.4');
+  n.style.letterSpacing = el.letterSpacing ? `${el.letterSpacing}px` : 'normal';
+  n.textContent = el.text || '';
+  const h = Math.min(maxH, Math.max(16, Math.ceil(n.scrollHeight + 4)));
+  return h;
 }
 
 function getElAtPoint(cx, cy) {
@@ -1206,6 +1234,7 @@ function canvasMouseDown(e) {
       x:pos.x, y:pos.y, w:260, h:40, frameId, opacity:1
     };
     state.elements.push(newEl);
+    newEl.h = measureTextHeight(newEl);
     state.selected = [id];
     setTool('V');
     pushHistory();
@@ -1998,6 +2027,9 @@ function updateEl(id, prop, value) {
     return;
   }
   el[prop] = value;
+  if (el.type === 'text' && ['text','fontSize','fontWeight','fontFamily','lineHeight','letterSpacing'].includes(prop)) {
+    el.h = measureTextHeight(el);
+  }
   pushHistory();
   render(); renderLayers();
   // Update fill hex inputs
@@ -2144,6 +2176,8 @@ function quickAddTextFromBar() {
     x:pos.x, y:pos.y, w:360, h:42,
     frameId:frame.id, opacity:1
   });
+  const el = state.elements.find(e => e.id === id);
+  el.h = measureTextHeight(el);
   state.selected = [id];
   pushHistory();
   render(); renderLayers(); renderProps();
