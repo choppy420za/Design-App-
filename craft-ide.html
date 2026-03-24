@@ -358,7 +358,20 @@ select option{background:var(--bg2)}
 }
 .preview-bar span{font-size:11px;color:var(--txt2);font-weight:500}
 .preview-bar-right{margin-left:auto;display:flex;gap:6px}
-.preview-iframe{flex:1;border:none;background:white}
+.preview-select{
+  font-size:11px;padding:3px 6px;border-radius:var(--r4);
+  background:var(--bg2);border:1px solid var(--border2);color:var(--txt1);
+}
+.preview-canvas{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#111117,#0c0c11);
+  overflow:hidden;position:relative;
+}
+.preview-shell{
+  width:100%;height:100%;background:white;overflow:hidden;
+  transform-origin:center center;transition:all .18s ease;
+}
+.preview-iframe{width:100%;height:100%;border:none;background:white;display:block}
 
 /* STATUS BAR */
 .statusbar{
@@ -556,6 +569,13 @@ select option{background:var(--bg2)}
         <input id="quick-text-input" placeholder="Type text and add to canvas..." />
         <button onclick="quickAddTextFromBar()">Add</button>
       </div>
+      <select class="preview-select" id="frame-preset">
+        <option value="desktop">Desktop 1440×1024</option>
+        <option value="tablet">Tablet 834×1112</option>
+        <option value="mobile">Mobile 390×844</option>
+        <option value="app">App 430×932</option>
+      </select>
+      <button class="tbtn" style="font-size:11px" onclick="addFrameFromPreset()">+ Frame</button>
       <button class="tool-btn" onclick="zoomOut()" title="Zoom Out">−</button>
       <div class="zoom-display" id="zoom-display" onclick="zoomReset()">100%</div>
       <button class="tool-btn" onclick="zoomIn()" title="Zoom In">+</button>
@@ -662,13 +682,28 @@ select option{background:var(--bg2)}
     <div class="preview-split">
       <div class="preview-bar">
         <span>Live Preview</span>
+        <select class="preview-select" id="preview-mode" onchange="setPreviewMode(this.value)">
+          <option value="web">Web</option>
+          <option value="app">App</option>
+        </select>
+        <select class="preview-select" id="preview-device" onchange="setPreviewDevice(this.value)">
+          <option value="responsive">Responsive</option>
+          <option value="desktop">Desktop</option>
+          <option value="tablet">Tablet</option>
+          <option value="mobile">Mobile</option>
+        </select>
         <div class="preview-bar-right">
+          <button class="tbtn" style="font-size:11px" onclick="validateCode()">Validate</button>
           <button class="tbtn" style="font-size:11px" onclick="toggleAIModal(true)">AI Assist</button>
           <button class="tbtn" style="font-size:11px" onclick="refreshPreview()">↻</button>
           <button class="tbtn" style="font-size:11px" onclick="popoutPreview()">⤢</button>
         </div>
       </div>
-      <iframe class="preview-iframe" id="code-preview"></iframe>
+      <div class="preview-canvas" id="preview-canvas">
+        <div class="preview-shell" id="preview-shell">
+          <iframe class="preview-iframe" id="code-preview"></iframe>
+        </div>
+      </div>
     </div>
   </div>
   <div class="statusbar">
@@ -783,9 +818,17 @@ const state = {
   },
   activeCodeFile: 'html',
   openTabs: ['html'],
-  aiBusy: false
+  aiBusy: false,
+  previewMode: 'web',
+  previewDevice: 'responsive'
 };
 const STORAGE_KEY = 'craft-ide:v2';
+const FRAME_PRESETS = {
+  desktop: {w:1440, h:1024, name:'Desktop'},
+  tablet: {w:834, h:1112, name:'Tablet'},
+  mobile: {w:390, h:844, name:'Mobile'},
+  app: {w:430, h:932, name:'App'}
+};
 
 // ═══════════════════════════════════════════════════════════
 // INITIAL ELEMENTS
@@ -858,7 +901,9 @@ function saveProject() {
     panX: state.panX,
     panY: state.panY,
     gridOn: state.gridOn,
-    rulersOn: state.rulersOn
+    rulersOn: state.rulersOn,
+    previewMode: state.previewMode,
+    previewDevice: state.previewDevice
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -887,6 +932,8 @@ function loadProject() {
     state.panY = Number.isFinite(data.panY) ? data.panY : state.panY;
     state.gridOn = !!data.gridOn;
     state.rulersOn = !!data.rulersOn;
+    state.previewMode = data.previewMode || state.previewMode;
+    state.previewDevice = data.previewDevice || state.previewDevice;
     return true;
   } catch (_) {
     return false;
@@ -2450,6 +2497,104 @@ function toggleFileTree() {
   sidebar.style.display = sidebar.style.display === 'none' ? '' : 'none';
 }
 
+function addFrameFromPreset() {
+  const presetKey = document.getElementById('frame-preset')?.value || 'desktop';
+  const preset = FRAME_PRESETS[presetKey] || FRAME_PRESETS.desktop;
+  const id = 'frame' + (++state.nextId);
+  const offset = state.frames.length * 40;
+  state.frames.push({
+    id,
+    name: `${preset.name} ${state.frames.length + 1}`,
+    x: offset,
+    y: offset,
+    w: preset.w,
+    h: preset.h,
+    bg: '#ffffff'
+  });
+  state.activeFrame = id;
+  pushHistory();
+  render(); renderLayers();
+  notify(`${preset.name} frame added`);
+}
+
+function setPreviewMode(mode) {
+  state.previewMode = mode === 'app' ? 'app' : 'web';
+  if (state.previewMode === 'app' && state.previewDevice === 'responsive') {
+    state.previewDevice = 'mobile';
+    const dev = document.getElementById('preview-device');
+    if (dev) dev.value = 'mobile';
+  }
+  applyPreviewViewport();
+  queueAutosave();
+}
+
+function setPreviewDevice(device) {
+  state.previewDevice = device;
+  applyPreviewViewport();
+  queueAutosave();
+}
+
+function applyPreviewViewport() {
+  const canvas = document.getElementById('preview-canvas');
+  const shell = document.getElementById('preview-shell');
+  if (!canvas || !shell) return;
+
+  const deviceMap = {
+    responsive: null,
+    desktop: {w: 1280, h: 800},
+    tablet: {w: 834, h: 1112},
+    mobile: {w: 390, h: 844}
+  };
+  const preset = deviceMap[state.previewDevice] || null;
+  const isApp = state.previewMode === 'app';
+
+  shell.style.border = isApp ? '10px solid #111218' : 'none';
+  shell.style.borderRadius = isApp ? '28px' : '0';
+  shell.style.boxShadow = isApp ? '0 18px 44px rgba(0,0,0,.55)' : 'none';
+
+  if (!preset) {
+    shell.style.width = '100%';
+    shell.style.height = '100%';
+    shell.style.transform = 'none';
+    return;
+  }
+
+  shell.style.width = `${preset.w}px`;
+  shell.style.height = `${preset.h}px`;
+  const scale = Math.min((canvas.clientWidth - 24) / preset.w, (canvas.clientHeight - 24) / preset.h, 1);
+  shell.style.transform = `scale(${Math.max(0.1, scale)})`;
+}
+
+function validateCode() {
+  const issues = [];
+  try {
+    const doc = new DOMParser().parseFromString(state.codeFiles.html || '', 'text/html');
+    if (doc.querySelector('parsererror')) issues.push('HTML parser error');
+  } catch (_) {
+    issues.push('HTML parse failed');
+  }
+  try {
+    // eslint-disable-next-line no-new
+    new Function(state.codeFiles.js || '');
+  } catch (err) {
+    issues.push(`JS: ${err.message}`);
+  }
+  try {
+    if ('CSSStyleSheet' in window) {
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(state.codeFiles.css || '');
+    }
+  } catch (err) {
+    issues.push(`CSS: ${err.message}`);
+  }
+
+  if (issues.length) {
+    notify(`Validation: ${issues[0]}`, 'warn');
+  } else {
+    notify('Validation passed');
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
 // MAIN TAB SWITCH (Design / Code)
 // ═══════════════════════════════════════════════════════════
@@ -2459,7 +2604,11 @@ function switchMainTab(tab) {
   document.getElementById('tab-code').classList.toggle('active', tab === 'code');
   document.getElementById('design-view').style.display = tab === 'design' ? 'flex' : 'none';
   document.getElementById('code-view').style.display = tab === 'code' ? 'flex' : 'none';
-  if (tab === 'code') { loadCodeFile(state.activeCodeFile); refreshPreview(); }
+  if (tab === 'code') {
+    loadCodeFile(state.activeCodeFile);
+    refreshPreview();
+    applyPreviewViewport();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2685,6 +2834,7 @@ function buildPreviewDocument() {
 
 function refreshPreview() {
   document.getElementById('code-preview').srcdoc = buildPreviewDocument();
+  applyPreviewViewport();
 }
 
 function popoutPreview() {
@@ -2890,6 +3040,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load initial code
   loadCodeFile(state.activeCodeFile);
   renderEditorTabs();
+  const modeSel = document.getElementById('preview-mode');
+  const devSel = document.getElementById('preview-device');
+  if (modeSel) modeSel.value = state.previewMode || 'web';
+  if (devSel) devSel.value = state.previewDevice || 'responsive';
+  applyPreviewViewport();
   if (restored) notify('Restored previous session');
 
   document.getElementById('quick-text-input')?.addEventListener('keydown', e => {
@@ -2941,6 +3096,10 @@ document.addEventListener('DOMContentLoaded', () => {
       ));
     }
     if (nonImages.length) await handleUploadedFiles(nonImages);
+  });
+
+  window.addEventListener('resize', () => {
+    if (state.activeTab === 'code') applyPreviewViewport();
   });
 });
 
