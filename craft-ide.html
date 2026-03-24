@@ -1096,7 +1096,7 @@ function findFreeTextPosition(frameId, x, y, w, h) {
   if (!frame) return {x, y};
   let px = Math.max(8, Math.round(x));
   let py = Math.max(8, Math.round(y));
-  const inFrame = e => e.frameId === frameId && (e.type === 'text' || e.type === 'image' || e.type === 'rect');
+  const inFrame = e => e.frameId === frameId && e.type === 'text' && e.opacity !== 0;
   const blockers = state.elements.filter(inFrame);
 
   for (let i = 0; i < 240; i++) {
@@ -1218,10 +1218,18 @@ function canvasMouseDown(e) {
       startTextEdit(newEl, fx, fy);
     }, 0);
   } else if (['R','O','L','F','I'].includes(state.tool)) {
-    const {frameId, lx, ly} = canvasToFrame(cx, cy);
+    let {frameId, lx, ly, gx, gy} = canvasToFrame(cx, cy);
+    if (!frameId) {
+      const fallback = state.frames.find(f => f.id === state.activeFrame) || state.frames[0];
+      if (fallback) {
+        frameId = fallback.id;
+        lx = gx - fallback.x;
+        ly = gy - fallback.y;
+      }
+    }
     if (frameId) state.activeFrame = frameId;
     state.drawing = true;
-    state.drawStart = {cx, cy, lx, ly, frameId};
+    state.drawStart = {cx, cy, lx, ly, gx, gy, frameId};
     e.preventDefault();
   }
 }
@@ -1352,8 +1360,20 @@ function canvasMouseUp(e) {
   }
 
   if (state.drawing && state.drawStart) {
-    const {lx: sx, ly: sy, frameId} = state.drawStart;
-    const {lx: ex, ly: ey} = canvasToFrame(cx, cy);
+    const {lx: sx, ly: sy, frameId, gx: sgx, gy: sgy} = state.drawStart;
+    if (!frameId) {
+      state.drawing = false; state.drawStart = null;
+      return;
+    }
+    const frame = state.frames.find(f => f.id === frameId);
+    if (!frame) {
+      state.drawing = false; state.drawStart = null;
+      return;
+    }
+    const egx = (cx - state.panX) / state.zoom;
+    const egy = (cy - state.panY) / state.zoom;
+    const ex = egx - frame.x;
+    const ey = egy - frame.y;
     const x = Math.min(sx, ex); const y = Math.min(sy, ey);
     const w = Math.max(Math.abs(ex - sx), 20);
     const h = Math.max(Math.abs(ey - sy), 20);
@@ -1370,7 +1390,15 @@ function canvasMouseUp(e) {
       } else if (t === 'T') {
         Object.assign(newEl, {type:'text', name:'Text', text:'Type something', fill:'#1a1a1a', fontSize:16, fontWeight:'400', textAlign:'left'});
       } else if (t === 'L') {
-        Object.assign(newEl, {type:'line', name:'Line', stroke:'#1a1a1a', strokeW:2, h:2});
+        const tinyDrag = Math.abs(egx - sgx) < 2 && Math.abs(egy - sgy) < 2;
+        Object.assign(newEl, {
+          type:'line',
+          name:'Line',
+          stroke:'#1a1a1a',
+          strokeW:2,
+          h:2,
+          w: tinyDrag ? 140 : Math.max(Math.abs(ex - sx), 20)
+        });
       } else if (t === 'I') {
         Object.assign(newEl, {type:'image', name:'Image', r:0});
       } else if (t === 'F') {
