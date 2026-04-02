@@ -996,7 +996,7 @@ const state = {
   styleClipboard: null,
   hoveredId: null,
   frames: [
-    {id:'frame1', name:'Desktop', x:0, y:0, w:1280, h:800, bg:'#ffffff'}
+    {id:'frame1', pageId:'p1', name:'Desktop', x:0, y:0, w:1280, h:800, bg:'#ffffff'}
   ],
   pages: [{id:'p1', name:'Page 1', active:true}],
   activeFrame: 'frame1',
@@ -1047,6 +1047,25 @@ const initEls = [
 ];
 state.elements = initEls;
 
+function getCurrentPageId() {
+  return state.pages.find(p => p.active)?.id || state.pages[0]?.id || 'p1';
+}
+
+function getFramesForCurrentPage() {
+  const pageId = getCurrentPageId();
+  return state.frames.filter(frame => (frame.pageId || 'p1') === pageId);
+}
+
+function getActiveFrameRecord() {
+  const currentFrames = getFramesForCurrentPage();
+  return currentFrames.find(frame => frame.id === state.activeFrame) || currentFrames[0] || state.frames[0] || null;
+}
+
+function getElementsForCurrentPage() {
+  const frameIds = new Set(getFramesForCurrentPage().map(frame => frame.id));
+  return state.elements.filter(el => frameIds.has(el.frameId));
+}
+
 // ═══════════════════════════════════════════════════════════
 function render() {
   const inner = document.getElementById('canvas-inner');
@@ -1056,7 +1075,7 @@ function render() {
   const existing = inner.querySelectorAll('.canvas-frame');
   existing.forEach(f => f.remove());
 
-  state.frames.forEach(frame => {
+  getFramesForCurrentPage().forEach(frame => {
     const fd = document.createElement('div');
     fd.className = 'canvas-frame';
     fd.id = 'frame-' + frame.id;
@@ -1121,8 +1140,9 @@ function loadProject() {
     if (!data || typeof data !== 'object') return false;
 
     state.elements = Array.isArray(data.elements) ? data.elements : state.elements;
-    state.frames = Array.isArray(data.frames) && data.frames.length ? data.frames : state.frames;
+    state.frames = Array.isArray(data.frames) && data.frames.length ? data.frames.map(frame => ({pageId:'p1', ...frame})) : state.frames;
     state.pages = Array.isArray(data.pages) && data.pages.length ? data.pages : state.pages;
+    if (!state.pages.some(p => p.active)) state.pages[0].active = true;
     state.activeFrame = data.activeFrame || state.frames[0]?.id || 'frame1';
     state.nextId = Number.isFinite(data.nextId) ? data.nextId : state.nextId;
     state.codeFiles = data.codeFiles && typeof data.codeFiles === 'object' ? {...state.codeFiles, ...data.codeFiles} : state.codeFiles;
@@ -1170,9 +1190,7 @@ function createElDOM(el) {
     div.style.lineHeight = el.lineHeight || '1.4';
     div.style.fontFamily = el.fontFamily || 'inherit';
     div.style.letterSpacing = el.letterSpacing ? el.letterSpacing + 'px' : 'normal';
-    div.style.display = 'flex';
-    div.style.alignItems = 'center';
-    div.style.justifyContent = el.textAlign === 'center' ? 'center' : el.textAlign === 'right' ? 'flex-end' : 'flex-start';
+    div.style.display = 'block';
     div.style.overflow = 'hidden';
     div.style.whiteSpace = 'pre-wrap';
     div.style.wordBreak = 'break-word';
@@ -1328,7 +1346,7 @@ function canvasToFrame(cx, cy) {
   const inner = document.getElementById('canvas-inner');
   const ix = (cx - state.panX) / state.zoom;
   const iy = (cy - state.panY) / state.zoom;
-  for (const frame of state.frames) {
+  for (const frame of getFramesForCurrentPage()) {
     if (ix >= frame.x && ix <= frame.x+frame.w && iy >= frame.y && iy <= frame.y+frame.h) {
       return {frameId: frame.id, lx: ix - frame.x, ly: iy - frame.y, gx: ix, gy: iy};
     }
@@ -1343,8 +1361,8 @@ function isLocked(el) {
 function findFreeTextPosition(frameId, x, y, w, h) {
   const frame = state.frames.find(f => f.id === frameId);
   if (!frame) return {x, y};
-  let px = Math.max(8, Math.round(x));
-  let py = Math.max(8, Math.round(y));
+  let px = Math.max(16, Math.round(x));
+  let py = Math.max(16, Math.round(y));
   const inFrame = e => e.frameId === frameId && !isLocked(e) && e.opacity !== 0;
   const blockers = state.elements.filter(inFrame);
 
@@ -1352,10 +1370,10 @@ function findFreeTextPosition(frameId, x, y, w, h) {
     const candidate = {x: px, y: py, w, h};
     const collision = blockers.some(el => rectsOverlap(candidate, {x: el.x, y: el.y, w: el.w, h: el.h}));
     if (!collision) return {x: px, y: py};
-    py += h + 8;
+    py += h + 20;
     if (py + h > frame.h - 8) {
-      py = 16 + ((i % 5) * 10);
-      px += Math.round(Math.min(80, w * 0.2) + 16);
+      py = 20 + ((i % 5) * 16);
+      px += Math.round(Math.min(120, w * 0.25) + 24);
       if (px + w > frame.w - 8) px = 16;
     }
   }
@@ -1627,7 +1645,7 @@ function canvasMouseUp(e) {
       const mx2 = Math.max(cx, state.marqueeStart.x);
       const my2 = Math.max(cy, state.marqueeStart.y);
       state.selected = [];
-      state.elements.forEach(el => {
+      getElementsForCurrentPage().forEach(el => {
         const frame = state.frames.find(f => f.id === el.frameId);
         if (!frame) return;
         const ex1 = (frame.x + el.x) * state.zoom + state.panX;
@@ -1689,7 +1707,7 @@ function canvasMouseUp(e) {
         const gx = state.drawStart.gx; const gy = state.drawStart.gy;
         const gx2 = (cx - state.panX) / state.zoom;
         const gy2 = (cy - state.panY) / state.zoom;
-        state.frames.push({id:fid, name:'Frame '+(state.frames.length+1), x:Math.round(Math.min(gx,gx2)), y:Math.round(Math.min(gy,gy2)), w:Math.round(Math.abs(gx2-gx)||300), h:Math.round(Math.abs(gy2-gy)||200), bg:'#ffffff'});
+        state.frames.push({id:fid, pageId:getCurrentPageId(), name:'Frame '+(state.frames.length+1), x:Math.round(Math.min(gx,gx2)), y:Math.round(Math.min(gy,gy2)), w:Math.round(Math.abs(gx2-gx)||300), h:Math.round(Math.abs(gy2-gy)||200), bg:'#ffffff'});
         state.drawing = false; state.drawStart = null;
         setTool('V'); render(); renderLayers();
         notify('New frame created');
@@ -1971,7 +1989,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'f' || e.key === 'F') setTool('F');
   if (e.key === 't' || e.key === 'T') setTool('T');
   if (e.key === 'l' || e.key === 'L') setTool('L');
-  if ((e.key === 'Delete' || e.key === 'Backspace') && state.selected.length > 0) ctxAction('delete');
+  if ((e.key === 'Delete' || e.key === 'Backspace') && state.selected.length > 0) { e.preventDefault(); ctxAction('delete'); }
   if ((e.metaKey || e.ctrlKey) && e.key === 'd') { e.preventDefault(); ctxAction('duplicate'); }
   if ((e.metaKey || e.ctrlKey) && e.key === 'c') ctxAction('copy');
   if ((e.metaKey || e.ctrlKey) && e.key === 'v') ctxAction('paste');
@@ -2058,7 +2076,7 @@ function renderLayers() {
 
   const icons = {rect:'▭',ellipse:'◯',text:'T',line:'—',image:'⊟',frame:'⊡'};
   let html = '';
-  [...state.elements].reverse().forEach(el => {
+  [...getElementsForCurrentPage()].reverse().forEach(el => {
     const sel = state.selected.includes(el.id);
     html += `<div class="layer-item ${sel?'selected':''}" onclick="selectFromLayer('${el.id}')" data-id="${el.id}">
       <span class="layer-icon" style="font-size:11px">${icons[el.type]||'□'}</span>
@@ -2149,23 +2167,53 @@ function renderProps() {
     </div>
   </div>`;
 
+  html += `
+  <div class="prop-section">
+    <div class="prop-sec-hd"><span class="prop-sec-title">Scroll Transform</span></div>
+    <div class="slider-row">
+      <label>X</label>
+      <input type="range" min="0" max="${Math.max(2000, Math.round(el.x + 800))}" step="1" value="${Math.round(el.x)}"
+        oninput="updateEl('${el.id}','x',+this.value);this.nextSibling.textContent=this.value" style="flex:1;height:3px;accent-color:var(--accent)"/>
+      <span class="slider-val">${Math.round(el.x)}</span>
+    </div>
+    <div class="slider-row">
+      <label>Y</label>
+      <input type="range" min="0" max="${Math.max(2000, Math.round(el.y + 800))}" step="1" value="${Math.round(el.y)}"
+        oninput="updateEl('${el.id}','y',+this.value);this.nextSibling.textContent=this.value" style="flex:1;height:3px;accent-color:var(--accent)"/>
+      <span class="slider-val">${Math.round(el.y)}</span>
+    </div>
+    <div class="slider-row">
+      <label>W</label>
+      <input type="range" min="10" max="${Math.max(2000, Math.round(el.w + 800))}" step="1" value="${Math.round(el.w)}"
+        oninput="updateEl('${el.id}','w',+this.value);this.nextSibling.textContent=this.value" style="flex:1;height:3px;accent-color:var(--accent)"/>
+      <span class="slider-val">${Math.round(el.w)}</span>
+    </div>
+    <div class="slider-row">
+      <label>H</label>
+      <input type="range" min="10" max="${Math.max(2000, Math.round(el.h + 800))}" step="1" value="${Math.round(el.h)}"
+        oninput="updateEl('${el.id}','h',+this.value);this.nextSibling.textContent=this.value" style="flex:1;height:3px;accent-color:var(--accent)"/>
+      <span class="slider-val">${Math.round(el.h)}</span>
+    </div>
+  </div>`;
+
   if (el.type === 'rect' || el.type === 'ellipse') {
     html += `
     <div class="prop-section">
       <div class="prop-sec-hd"><span class="prop-sec-title">Fill</span><span class="prop-add-btn" title="Add fill">+</span></div>
       <div class="color-row">
-        <div class="color-swatch" style="background:${el.fill||'#e0e0e0'}"><input type="color" value="${el.fill||'#e0e0e0'}" oninput="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
-        <input class="color-hex" value="${el.fill||'#e0e0e0'}" onchange="updateEl('${el.id}','fill',this.value)"/>
+        <div class="color-swatch" style="background:${el.fill||'#e0e0e0'}"><input type="color" value="${normalizeHexColor(el.fill)||'#e0e0e0'}" oninput="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.fill||'#e0e0e0'}" oninput="updateEl('${el.id}','fill',this.value)"/>
         <input class="color-opacity" value="100%" readonly title="Fill opacity"/>
       </div>
     </div>
     <div class="prop-section">
       <div class="prop-sec-hd"><span class="prop-sec-title">Stroke</span><span class="prop-add-btn" title="Add stroke">+</span></div>
       <div class="color-row">
-        <div class="color-swatch" style="background:${el.stroke&&el.stroke!=='none'?el.stroke:'#cccccc'}"><input type="color" value="${el.stroke&&el.stroke!=='none'?el.stroke:'#000000'}" oninput="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
-        <input class="color-hex" value="${el.stroke&&el.stroke!=='none'?el.stroke:'none'}" onchange="updateEl('${el.id}','stroke',this.value)"/>
-        <input class="color-opacity" value="${el.strokeW||0}" onchange="updateEl('${el.id}','strokeW',parseInt(this.value)||0)" title="Stroke width (px)" style="width:40px"/>
+        <div class="color-swatch" style="background:${el.stroke&&el.stroke!=='none'?el.stroke:'#cccccc'}"><input type="color" value="${normalizeHexColor(el.stroke&&el.stroke!=='none'?el.stroke:'#000000')||'#000000'}" oninput="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.stroke&&el.stroke!=='none'?el.stroke:'#000000'}" oninput="updateEl('${el.id}','stroke',this.value)"/>
+        <input class="color-opacity" value="${el.strokeW||0}" oninput="updateEl('${el.id}','strokeW',Math.max(0,parseInt(this.value)||0))" title="Stroke width (px)" style="width:40px"/>
       </div>
+      <div style="margin-top:6px"><button class="tbtn" style="width:100%;font-size:10px" onclick="toggleStrokeSelected()">${el.stroke==='none'?'Enable Stroke':'Disable Stroke'}</button></div>
     </div>`;
     if (el.type === 'rect') {
       html += `
@@ -2204,8 +2252,8 @@ function renderProps() {
         <div class="prop-field"><div class="prop-field-label">Letter</div><input class="prop-input" value="${el.letterSpacing||0}" onchange="updateEl('${el.id}','letterSpacing',+this.value)"/></div>
       </div>
       <div class="color-row" style="margin-bottom:6px">
-        <div class="color-swatch" style="background:${el.fill||'#1a1a1a'}"><input type="color" value="${el.fill||'#1a1a1a'}" oninput="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
-        <input class="color-hex" value="${el.fill||'#1a1a1a'}" onchange="updateEl('${el.id}','fill',this.value)"/>
+            <div class="color-swatch" style="background:${el.fill||'#1a1a1a'}"><input type="color" value="${normalizeHexColor(el.fill)||'#1a1a1a'}" oninput="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.fill||'#1a1a1a'}" oninput="updateEl('${el.id}','fill',this.value)"/>
       </div>
       <div class="align-row">
         ${['left','center','right','justify'].map(a=>`
@@ -2229,9 +2277,9 @@ function renderProps() {
     <div class="prop-section">
       <div class="prop-sec-hd"><span class="prop-sec-title">Stroke</span></div>
       <div class="color-row">
-        <div class="color-swatch" style="background:${el.stroke||'#1a1a1a'}"><input type="color" value="${el.stroke||'#1a1a1a'}" oninput="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
-        <input class="color-hex" value="${el.stroke||'#1a1a1a'}" onchange="updateEl('${el.id}','stroke',this.value)"/>
-        <input class="color-opacity" value="${el.strokeW||2}" onchange="updateEl('${el.id}','strokeW',parseInt(this.value)||2)" title="Width" style="width:40px"/>
+        <div class="color-swatch" style="background:${el.stroke||'#1a1a1a'}"><input type="color" value="${normalizeHexColor(el.stroke)||'#1a1a1a'}" oninput="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.stroke||'#1a1a1a'}" oninput="updateEl('${el.id}','stroke',this.value)"/>
+        <input class="color-opacity" value="${el.strokeW||2}" oninput="updateEl('${el.id}','strokeW',Math.max(1,parseInt(this.value)||2))" title="Width" style="width:40px"/>
       </div>
     </div>`;
   }
@@ -2301,17 +2349,38 @@ function updateEl(id, prop, value) {
     notify('Layer is locked', 'warn');
     return;
   }
+  if (['fill','stroke','shadowColor'].includes(prop)) {
+    const normalized = normalizeHexColor(value);
+    if (normalized) value = normalized;
+    if (prop === 'stroke' && (value === '' || value === 'transparent')) value = 'none';
+  }
+  if (['x','y','w','h','r','strokeW','fontSize','letterSpacing','shadowX','shadowY','shadowBlur','shadowSpread','filterBlur'].includes(prop)) {
+    value = Number(value);
+  }
   el[prop] = value;
+  if (prop === 'stroke' && value !== 'none' && (!el.strokeW || el.strokeW < 1)) el.strokeW = 1;
   if (el.type === 'text' && ['text','fontSize','fontWeight','fontFamily','lineHeight','letterSpacing'].includes(prop)) {
     el.h = measureTextHeight(el);
   }
+  if (prop === 'w') el.w = Math.max(10, el.w);
+  if (prop === 'h') el.h = Math.max(10, el.h);
+  if (prop === 'r') el.r = Math.max(0, el.r);
   pushHistory();
-  render(); renderLayers();
-  // Update fill hex inputs
-  if (prop === 'fill' || prop === 'stroke') {
-    const hexInputs = document.querySelectorAll('.fill-hex');
-    hexInputs.forEach(inp => { if (inp.value !== value && inp.value.startsWith('#')) inp.value = value; });
+  render(); renderLayers(); renderProps();
+}
+
+function toggleStrokeSelected() {
+  if (state.selected.length !== 1) return;
+  const el = state.elements.find(item => item.id === state.selected[0]);
+  if (!el || !['rect','ellipse','line'].includes(el.type)) return;
+  if (el.type === 'line') {
+    updateEl(el.id, 'stroke', el.stroke === 'none' ? '#1a1a1a' : 'none');
+    if (el.stroke === 'none') updateEl(el.id, 'strokeW', 2);
+    return;
   }
+  const nextStroke = el.stroke === 'none' ? '#000000' : 'none';
+  updateEl(el.id, 'stroke', nextStroke);
+  if (nextStroke !== 'none') updateEl(el.id, 'strokeW', Math.max(1, el.strokeW || 1));
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2429,12 +2498,51 @@ function renderAssetLibrary() {
         <div class="asset-grid">
           ${section.items.map(([label,key,icon,kind]) => `
             <div class="asset-item" onclick="${kind === 'shape' ? "quickAdd('" + key + "')" : "addComponent('" + key + "')"}">
-              <div class="asset-icon" style="font-size:14px;${kind === 'shape' ? '' : 'color:var(--purple)'}">${icon}</div>
+              <div class="asset-icon" style="${kind === 'shape' ? '' : 'color:var(--purple)'}">${getAssetIconSVG(key, icon)}</div>
               <div class="asset-label">${label}</div>
             </div>`).join('')}
         </div>
       </div>`).join('')}
     ${sections.length ? '' : `<div style="padding:16px 10px;color:var(--txt2);font-size:11px">No assets match that search.</div>`}`;
+}
+
+function getAssetIconSVG(key, fallback) {
+  const icons = {
+    rect:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="10" rx="1.5"/></svg>`,
+    ellipse:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><ellipse cx="8" cy="8" rx="5.5" ry="4.5"/></svg>`,
+    line:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12L14 4"/></svg>`,
+    text:`<svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h10v2H9v8H7V5H3z"/></svg>`,
+    image:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="6" cy="7" r="1.2"/><path d="M3 11l3-2 2 1 3-3 2 4"/></svg>`,
+    nav:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M5 6h6M10 10h2"/></svg>`,
+    hero:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2" width="13" height="12" rx="2"/><path d="M4 6h8M4 9h5M4 12h3"/></svg>`,
+    card:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M4 5h8M4 8h8M4 11h5"/></svg>`,
+    button:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="4.5" width="12" height="7" rx="3.5"/></svg>`,
+    form:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M4 5h8M4 8h8M4 11h5"/></svg>`,
+    pricing:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 6h6M6 10h4"/></svg>`,
+    testimonial:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 6h4v4H3zM9 6h4v4H9z"/><path d="M4 12h3M10 12h3"/></svg>`,
+    features:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="4" height="4" rx="1"/><rect x="10" y="2" width="4" height="4" rx="1"/><rect x="2" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/></svg>`,
+    stats:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 12V7M8 12V4M13 12V9"/></svg>`,
+    sidebar:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2" width="13" height="12" rx="2"/><path d="M6 2v12"/></svg>`,
+    modal:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2" width="13" height="12" rx="2"/><rect x="4" y="5" width="8" height="6" rx="1.5"/></svg>`,
+    gallery:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="12" height="5" rx="1"/></svg>`,
+    faq:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6"/><path d="M6.6 6.2A1.7 1.7 0 0 1 8 5.5c1 0 1.8.6 1.8 1.6 0 1.4-1.8 1.5-1.8 3"/><circle cx="8" cy="11.8" r=".7" fill="currentColor" stroke="none"/></svg>`,
+    cta:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h12M10 4l4 4-4 4"/></svg>`,
+    dashboard:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M4 5h3v6H4zM9 8h3v3H9zM9 5h3v2H9z"/></svg>`,
+    table:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 6h12M6 6v7M10 6v7"/></svg>`,
+    chart:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 12V8M7 12V5M11 12V7"/><path d="M2 13h12"/></svg>`,
+    kpi:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M5 8h2M9 8h2M5 10h6"/></svg>`,
+    tabs:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 5h12M3 5V3h3v2M7 5V3h3v2M11 5V3h2v2"/><rect x="2" y="5" width="12" height="8" rx="1.5"/></svg>`,
+    kanban:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="3" height="12" rx="1"/><rect x="6.5" y="4" width="3" height="10" rx="1"/><rect x="11" y="6" width="3" height="8" rx="1"/></svg>`,
+    timeline:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2v12"/><circle cx="8" cy="4" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="8" cy="12" r="1.3"/></svg>`,
+    notification:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2a3 3 0 0 1 3 3v2.5l1.3 2.3H3.7L5 7.5V5a3 3 0 0 1 3-3z"/><path d="M6.5 12.3a1.5 1.5 0 0 0 3 0"/></svg>`,
+    chat:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 3h10v7H7l-3 3V3z"/></svg>`,
+    login:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="2" width="10" height="12" rx="2"/><path d="M8 8h3M9.5 6.5L11 8l-1.5 1.5"/></svg>`,
+    signup:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M8 5v6M5 8h6"/></svg>`,
+    profile:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="5.5" r="2.5"/><path d="M3.5 13a4.5 4.5 0 0 1 9 0"/></svg>`,
+    settings:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M12.8 3.2l-1.4 1.4M4.6 11.4l-1.4 1.4"/></svg>`,
+    checkout:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 4h11l-1 7h-8z"/><path d="M5.5 4V3a2.5 2.5 0 0 1 5 0v1"/></svg>`
+  };
+  return icons[key] || fallback;
 }
 
 function updateAssetSearch(value) {
@@ -2517,8 +2625,14 @@ function quickAdd(type) {
     line: {type:'line',name:'Line',w:200,h:2,stroke:'#1a1a1a',strokeW:2,opacity:1},
     image: {type:'image',name:'Image',w:300,h:200,r:0,opacity:1},
   };
-  const targetFrame = state.frames.find(f => f.id === state.activeFrame) ? state.activeFrame : state.frames[0].id;
-  const el = {...defaults[type], id, x: Math.round(cx), y: Math.round(cy), frameId: targetFrame};
+  const activeFrame = getActiveFrameRecord();
+  const targetFrame = activeFrame ? activeFrame.id : state.frames[0].id;
+  const baseEl = {...defaults[type], id, frameId: targetFrame};
+  const pos = type === 'text'
+    ? findFreeTextPosition(targetFrame, Math.round(cx), Math.round(cy), baseEl.w, baseEl.h)
+    : {x: Math.round(cx), y: Math.round(cy)};
+  const el = {...baseEl, x: pos.x, y: pos.y};
+  if (type === 'text') el.h = measureTextHeight(el);
   state.elements.push(el);
   state.selected = [id];
   pushHistory(); render(); renderLayers(); renderProps();
@@ -2528,7 +2642,7 @@ function quickAddTextFromBar() {
   const input = document.getElementById('quick-text-input');
   if (!input) return;
   const value = (input.value || '').trim() || 'Type something';
-  const frame = state.frames.find(f => f.id === state.activeFrame) || state.frames[0];
+  const frame = getActiveFrameRecord() || state.frames[0];
   if (!frame) return;
   const id = 'el' + (++state.nextId);
   const pos = findFreeTextPosition(frame.id, Math.round(frame.w * 0.08), Math.round(frame.h * 0.12), 360, 42);
@@ -2614,8 +2728,9 @@ async function importProjectJSON(file) {
   if (!data || typeof data !== 'object') throw new Error('Invalid project file');
   if (!Array.isArray(data.elements) || !Array.isArray(data.frames)) throw new Error('Missing elements/frames');
   state.elements = data.elements;
-  state.frames = data.frames.length ? data.frames : state.frames;
+  state.frames = data.frames.length ? data.frames.map(frame => ({pageId:'p1', ...frame})) : state.frames;
   state.pages = Array.isArray(data.pages) && data.pages.length ? data.pages : state.pages;
+  if (!state.pages.some(p => p.active)) state.pages[0].active = true;
   state.codeFiles = data.codeFiles && typeof data.codeFiles === 'object' ? {...state.codeFiles, ...data.codeFiles} : state.codeFiles;
   state.nextId = Number.isFinite(data.nextId) ? data.nextId : state.nextId;
   state.activeFrame = data.activeFrame || state.frames[0]?.id || state.activeFrame;
@@ -2700,7 +2815,7 @@ function addImageFromFile(file, frameId = null, x = null, y = null) {
       w = Math.round(w * ratio);
       h = Math.round(h * ratio);
 
-      const frame = state.frames.find(f => f.id === (frameId || state.activeFrame)) || state.frames[0];
+      const frame = state.frames.find(f => f.id === (frameId || state.activeFrame)) || getActiveFrameRecord() || state.frames[0];
       if (!frame) return;
       const id = 'el' + (++state.nextId);
       const px = x !== null ? x : Math.round((frame.w - w) / 2);
@@ -2713,7 +2828,9 @@ function addImageFromFile(file, frameId = null, x = null, y = null) {
       state.selected = [id];
       pushHistory();
       render();
+      renderLayers();
       renderProps();
+      queueAutosave();
       notify('Image imported');
     };
     img.src = src;
@@ -2740,7 +2857,9 @@ function replaceImageForSelected(file) {
     el.src = String(ev.target?.result || '');
     pushHistory();
     render();
+    renderLayers();
     renderProps();
+    queueAutosave();
     notify('Image replaced');
   };
   reader.readAsDataURL(file);
@@ -2810,7 +2929,7 @@ function matchSelectedSize(dim) {
 }
 
 function addComponent(type) {
-  const frameId = state.frames.find(f => f.id === state.activeFrame) ? state.activeFrame : state.frames[0].id;
+  const frameId = (getActiveFrameRecord() || state.frames[0]).id;
   const id1 = ++state.nextId; const id2 = ++state.nextId; const id3 = ++state.nextId;
   const id4 = ++state.nextId; const id5 = ++state.nextId; const id6 = ++state.nextId;
   const comps = {
@@ -3045,9 +3164,11 @@ function addFrameFromPreset() {
   const presetKey = document.getElementById('frame-preset')?.value || 'desktop';
   const preset = FRAME_PRESETS[presetKey] || FRAME_PRESETS.desktop;
   const id = 'frame' + (++state.nextId);
-  const offset = state.frames.length * 40;
+  const pageFrames = getFramesForCurrentPage();
+  const offset = pageFrames.length * 40;
   state.frames.push({
     id,
+    pageId: getCurrentPageId(),
     name: `${preset.name} ${state.frames.length + 1}`,
     x: offset,
     y: offset,
@@ -3479,7 +3600,9 @@ function popoutPreview() {
 
 function syncDesignToCode() {
   // Generate HTML from canvas elements
-  const frameEls = state.elements.filter(e => e.frameId === state.frames[0].id);
+  const frame = getActiveFrameRecord() || state.frames[0];
+  if (!frame) return;
+  const frameEls = state.elements.filter(e => e.frameId === frame.id);
   const body = frameEls.map(el => '  ' + elToHTML(el)).join('\n');
   state.codeFiles.html = `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <title>My Project</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n${body}\n  <script src="script.js"><\/script>\n</body>\n</html>`;
   loadCodeFile(state.activeCodeFile);
@@ -3660,13 +3783,24 @@ function runPreview() {
 // ═══════════════════════════════════════════════════════════
 function addPage() {
   const id = 'p' + (++state.nextId);
-  state.pages.push({id, name:'Page '+(state.pages.length+1), active:false});
+  state.pages.forEach(p => p.active = false);
+  state.pages.push({id, name:'Page '+(state.pages.length+1), active:true});
+  const frameId = 'frame' + (++state.nextId);
+  state.frames.push({id:frameId, pageId:id, name:`Page ${state.pages.length} Frame`, x:0, y:0, w:1280, h:800, bg:'#ffffff'});
+  state.activeFrame = frameId;
+  state.selected = [];
   queueAutosave();
   switchLeftTab('pages', document.querySelector('.ptab.active'));
 }
 function switchPage(id) {
   state.pages.forEach(p => p.active = p.id === id);
+  const firstFrame = state.frames.find(frame => (frame.pageId || 'p1') === id);
+  if (firstFrame) state.activeFrame = firstFrame.id;
+  state.selected = [];
   queueAutosave();
+  render();
+  renderLayers();
+  renderProps();
   switchLeftTab('pages', document.querySelector('.ptab.active'));
   notify('Switched to ' + state.pages.find(p=>p.id===id)?.name);
 }
