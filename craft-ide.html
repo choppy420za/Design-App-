@@ -333,7 +333,7 @@ select option{background:var(--bg2)}
 .inline-edit{
   position:absolute;background:transparent;border:none;outline:none;
   color:inherit;font:inherit;resize:none;cursor:text;
-  white-space:pre-wrap;z-index:999;padding:0;
+  white-space:pre-wrap;z-index:999;padding:0;overflow:hidden;
 }
 
 /* ── DESIGN ELEMENT ──────────────────────────────────────── */
@@ -561,7 +561,7 @@ kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;bo
   padding:8px 6px;cursor:pointer;text-align:center;transition:all .12s;
 }
 .asset-item:hover{border-color:var(--accent);background:var(--bg3)}
-.asset-icon{font-size:18px;margin-bottom:3px}
+.asset-icon{font-size:18px;margin-bottom:3px;display:flex;align-items:center;justify-content:center;min-height:28px}
 .asset-label{font-size:10px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .asset-item:hover .asset-label{color:var(--txt1)}
 
@@ -1197,17 +1197,10 @@ function createElDOM(el) {
     div.style.userSelect = 'none';
     div.textContent = el.text || '';
   } else if (el.type === 'line') {
-    div.style.background = 'transparent';
-    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-    svg.setAttribute('width','100%'); svg.setAttribute('height','100%');
-    svg.style.overflow = 'visible';
-    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1','0'); line.setAttribute('y1','50%');
-    line.setAttribute('x2','100%'); line.setAttribute('y2','50%');
-    line.setAttribute('stroke', el.stroke || '#1a1a1a');
-    line.setAttribute('stroke-width', el.strokeW || 2);
-    svg.appendChild(line);
-    div.appendChild(svg);
+    const strokeW = Math.max(1, el.strokeW || 2);
+    div.style.height = strokeW + 'px';
+    div.style.background = el.stroke && el.stroke !== 'none' ? el.stroke : 'transparent';
+    div.style.borderRadius = '999px';
   } else if (el.type === 'image') {
     div.style.background = '#e8e8e8';
     div.style.borderRadius = (el.r || 0) + 'px';
@@ -1694,6 +1687,8 @@ function canvasMouseUp(e) {
         Object.assign(newEl, {
           type:'line',
           name:'Line',
+          x: Math.round(Math.min(sx, ex)),
+          y: Math.round(sy),
           stroke:'#1a1a1a',
           strokeW:2,
           h:2,
@@ -1750,6 +1745,8 @@ function startTextEdit(el, clientX, clientY) {
   const sy = (frame.y + el.y) * state.zoom + state.panY;
   const sw = el.w * state.zoom;
   const sh = el.h * state.zoom;
+  const sourceNode = document.querySelector(`[data-el="${el.id}"]`);
+  if (sourceNode) sourceNode.style.visibility = 'hidden';
 
   const ta = document.createElement('textarea');
   ta.id = 'inline-editor';
@@ -1760,27 +1757,43 @@ function startTextEdit(el, clientX, clientY) {
   ta.style.fontWeight = el.fontWeight || '400';
   ta.style.textAlign = el.textAlign || 'left';
   ta.style.color = el.fill || '#1a1a1a';
-  ta.style.lineHeight = '1.4';
+  ta.style.fontFamily = el.fontFamily || 'inherit';
+  ta.style.letterSpacing = el.letterSpacing ? `${el.letterSpacing * state.zoom}px` : 'normal';
+  ta.style.lineHeight = String(el.lineHeight || '1.4');
   ta.value = el.text || '';
-  ta.style.background = 'rgba(91,106,240,.05)';
+  ta.style.background = 'rgba(255,255,255,.94)';
   ta.style.border = '2px solid var(--accent)';
-  ta.style.borderRadius = '2px';
-  ta.style.padding = '2px';
+  ta.style.borderRadius = '4px';
+  ta.style.padding = '2px 3px';
+  ta.style.boxSizing = 'border-box';
 
   document.getElementById('canvas-wrap').appendChild(ta);
   ta.focus(); ta.select();
   state.textEditing = el.id;
 
+  const syncInlineEditorSize = () => {
+    ta.style.height = 'auto';
+    ta.style.height = Math.max(sh, ta.scrollHeight + 2) + 'px';
+  };
+  syncInlineEditorSize();
+
   ta.addEventListener('blur', () => {
     el.text = ta.value;
+    el.h = measureTextHeight(el);
     ta.remove();
+    if (sourceNode) sourceNode.style.visibility = '';
     state.textEditing = null;
     pushHistory();
     queueAutosave();
     render();
   });
+  ta.addEventListener('input', syncInlineEditorSize);
   ta.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { e.preventDefault(); ta.blur(); }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (sourceNode) sourceNode.style.visibility = '';
+      ta.blur();
+    }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ta.blur(); }
   });
   ta.addEventListener('mousedown', e => e.stopPropagation());
@@ -2173,25 +2186,25 @@ function renderProps() {
     <div class="slider-row">
       <label>X</label>
       <input type="range" min="0" max="${Math.max(2000, Math.round(el.x + 800))}" step="1" value="${Math.round(el.x)}"
-        oninput="updateEl('${el.id}','x',+this.value);this.nextSibling.textContent=this.value" style="flex:1;height:3px;accent-color:var(--accent)"/>
+        oninput="liveUpdateEl('${el.id}','x',+this.value);this.nextSibling.textContent=this.value" onchange="updateEl('${el.id}','x',+this.value)" style="flex:1;height:3px;accent-color:var(--accent)"/>
       <span class="slider-val">${Math.round(el.x)}</span>
     </div>
     <div class="slider-row">
       <label>Y</label>
       <input type="range" min="0" max="${Math.max(2000, Math.round(el.y + 800))}" step="1" value="${Math.round(el.y)}"
-        oninput="updateEl('${el.id}','y',+this.value);this.nextSibling.textContent=this.value" style="flex:1;height:3px;accent-color:var(--accent)"/>
+        oninput="liveUpdateEl('${el.id}','y',+this.value);this.nextSibling.textContent=this.value" onchange="updateEl('${el.id}','y',+this.value)" style="flex:1;height:3px;accent-color:var(--accent)"/>
       <span class="slider-val">${Math.round(el.y)}</span>
     </div>
     <div class="slider-row">
       <label>W</label>
       <input type="range" min="10" max="${Math.max(2000, Math.round(el.w + 800))}" step="1" value="${Math.round(el.w)}"
-        oninput="updateEl('${el.id}','w',+this.value);this.nextSibling.textContent=this.value" style="flex:1;height:3px;accent-color:var(--accent)"/>
+        oninput="liveUpdateEl('${el.id}','w',+this.value);this.nextSibling.textContent=this.value" onchange="updateEl('${el.id}','w',+this.value)" style="flex:1;height:3px;accent-color:var(--accent)"/>
       <span class="slider-val">${Math.round(el.w)}</span>
     </div>
     <div class="slider-row">
       <label>H</label>
       <input type="range" min="10" max="${Math.max(2000, Math.round(el.h + 800))}" step="1" value="${Math.round(el.h)}"
-        oninput="updateEl('${el.id}','h',+this.value);this.nextSibling.textContent=this.value" style="flex:1;height:3px;accent-color:var(--accent)"/>
+        oninput="liveUpdateEl('${el.id}','h',+this.value);this.nextSibling.textContent=this.value" onchange="updateEl('${el.id}','h',+this.value)" style="flex:1;height:3px;accent-color:var(--accent)"/>
       <span class="slider-val">${Math.round(el.h)}</span>
     </div>
   </div>`;
@@ -2201,17 +2214,22 @@ function renderProps() {
     <div class="prop-section">
       <div class="prop-sec-hd"><span class="prop-sec-title">Fill</span><span class="prop-add-btn" title="Add fill">+</span></div>
       <div class="color-row">
-        <div class="color-swatch" style="background:${el.fill||'#e0e0e0'}"><input type="color" value="${normalizeHexColor(el.fill)||'#e0e0e0'}" oninput="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
-        <input class="color-hex" value="${el.fill||'#e0e0e0'}" oninput="updateEl('${el.id}','fill',this.value)"/>
+        <div class="color-swatch" style="background:${el.fill||'#e0e0e0'}"><input type="color" value="${normalizeHexColor(el.fill)||'#e0e0e0'}" onchange="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.fill||'#e0e0e0'}" onchange="updateEl('${el.id}','fill',this.value)"/>
         <input class="color-opacity" value="100%" readonly title="Fill opacity"/>
       </div>
     </div>
     <div class="prop-section">
       <div class="prop-sec-hd"><span class="prop-sec-title">Stroke</span><span class="prop-add-btn" title="Add stroke">+</span></div>
       <div class="color-row">
-        <div class="color-swatch" style="background:${el.stroke&&el.stroke!=='none'?el.stroke:'#cccccc'}"><input type="color" value="${normalizeHexColor(el.stroke&&el.stroke!=='none'?el.stroke:'#000000')||'#000000'}" oninput="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
-        <input class="color-hex" value="${el.stroke&&el.stroke!=='none'?el.stroke:'#000000'}" oninput="updateEl('${el.id}','stroke',this.value)"/>
-        <input class="color-opacity" value="${el.strokeW||0}" oninput="updateEl('${el.id}','strokeW',Math.max(0,parseInt(this.value)||0))" title="Stroke width (px)" style="width:40px"/>
+        <div class="color-swatch" style="background:${el.stroke&&el.stroke!=='none'?el.stroke:'#cccccc'}"><input type="color" value="${normalizeHexColor(el.stroke&&el.stroke!=='none'?el.stroke:'#000000')||'#000000'}" onchange="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.stroke&&el.stroke!=='none'?el.stroke:'#000000'}" onchange="updateEl('${el.id}','stroke',this.value)"/>
+        <input class="color-opacity" value="${el.strokeW||0}" onchange="updateEl('${el.id}','strokeW',Math.max(0,parseInt(this.value)||0))" title="Stroke width (px)" style="width:40px"/>
+      </div>
+      <div class="slider-row" style="margin-top:6px">
+        <label>Width</label>
+        <input type="range" min="0" max="24" step="1" value="${el.strokeW||0}" oninput="liveUpdateEl('${el.id}','strokeW',Math.max(0,+this.value));this.nextElementSibling.textContent=this.value+'px'" onchange="updateEl('${el.id}','strokeW',Math.max(0,+this.value))" style="flex:1;height:3px;accent-color:var(--accent)"/>
+        <span class="slider-val">${el.strokeW||0}px</span>
       </div>
       <div style="margin-top:6px"><button class="tbtn" style="width:100%;font-size:10px" onclick="toggleStrokeSelected()">${el.stroke==='none'?'Enable Stroke':'Disable Stroke'}</button></div>
     </div>`;
@@ -2219,12 +2237,12 @@ function renderProps() {
       html += `
       <div class="prop-section">
         <div class="prop-sec-hd"><span class="prop-sec-title">Corner Radius</span></div>
-        <div class="prop-row4">
-          <div class="prop-field"><div class="prop-field-label">↖</div><input class="prop-input" value="${el.r||0}" onchange="updateEl('${el.id}','r',+this.value)"/></div>
-          <div class="prop-field"><div class="prop-field-label">↗</div><input class="prop-input" value="${el.r||0}" onchange="updateEl('${el.id}','r',+this.value)"/></div>
-          <div class="prop-field"><div class="prop-field-label">↘</div><input class="prop-input" value="${el.r||0}" onchange="updateEl('${el.id}','r',+this.value)"/></div>
-          <div class="prop-field"><div class="prop-field-label">↙</div><input class="prop-input" value="${el.r||0}" onchange="updateEl('${el.id}','r',+this.value)"/></div>
+        <div class="slider-row" style="margin-bottom:6px">
+          <label>Radius</label>
+          <input type="range" min="0" max="${Math.max(120, Math.round(Math.min(el.w, el.h) / 2))}" step="1" value="${el.r||0}" oninput="liveUpdateEl('${el.id}','r',+this.value);document.getElementById('radius-input-${el.id}').value=this.value;this.nextElementSibling.textContent=this.value+'px'" onchange="updateEl('${el.id}','r',+this.value)" style="flex:1;height:3px;accent-color:var(--accent)"/>
+          <span class="slider-val">${el.r||0}px</span>
         </div>
+        <input id="radius-input-${el.id}" class="prop-input-wide" value="${el.r||0}" onchange="updateEl('${el.id}','r',+this.value)" />
       </div>`;
     }
   }
@@ -2252,8 +2270,8 @@ function renderProps() {
         <div class="prop-field"><div class="prop-field-label">Letter</div><input class="prop-input" value="${el.letterSpacing||0}" onchange="updateEl('${el.id}','letterSpacing',+this.value)"/></div>
       </div>
       <div class="color-row" style="margin-bottom:6px">
-            <div class="color-swatch" style="background:${el.fill||'#1a1a1a'}"><input type="color" value="${normalizeHexColor(el.fill)||'#1a1a1a'}" oninput="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
-        <input class="color-hex" value="${el.fill||'#1a1a1a'}" oninput="updateEl('${el.id}','fill',this.value)"/>
+            <div class="color-swatch" style="background:${el.fill||'#1a1a1a'}"><input type="color" value="${normalizeHexColor(el.fill)||'#1a1a1a'}" onchange="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.fill||'#1a1a1a'}" onchange="updateEl('${el.id}','fill',this.value)"/>
       </div>
       <div class="align-row">
         ${['left','center','right','justify'].map(a=>`
@@ -2277,9 +2295,14 @@ function renderProps() {
     <div class="prop-section">
       <div class="prop-sec-hd"><span class="prop-sec-title">Stroke</span></div>
       <div class="color-row">
-        <div class="color-swatch" style="background:${el.stroke||'#1a1a1a'}"><input type="color" value="${normalizeHexColor(el.stroke)||'#1a1a1a'}" oninput="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
-        <input class="color-hex" value="${el.stroke||'#1a1a1a'}" oninput="updateEl('${el.id}','stroke',this.value)"/>
-        <input class="color-opacity" value="${el.strokeW||2}" oninput="updateEl('${el.id}','strokeW',Math.max(1,parseInt(this.value)||2))" title="Width" style="width:40px"/>
+        <div class="color-swatch" style="background:${el.stroke||'#1a1a1a'}"><input type="color" value="${normalizeHexColor(el.stroke)||'#1a1a1a'}" onchange="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.stroke||'#1a1a1a'}" onchange="updateEl('${el.id}','stroke',this.value)"/>
+        <input class="color-opacity" value="${el.strokeW||2}" onchange="updateEl('${el.id}','strokeW',Math.max(1,parseInt(this.value)||2))" title="Width" style="width:40px"/>
+      </div>
+      <div class="slider-row" style="margin-top:6px">
+        <label>Width</label>
+        <input type="range" min="1" max="24" step="1" value="${el.strokeW||2}" oninput="liveUpdateEl('${el.id}','strokeW',Math.max(1,+this.value));this.nextElementSibling.textContent=this.value+'px'" onchange="updateEl('${el.id}','strokeW',Math.max(1,+this.value))" style="flex:1;height:3px;accent-color:var(--accent)"/>
+        <span class="slider-val">${el.strokeW||2}px</span>
       </div>
     </div>`;
   }
@@ -2342,7 +2365,7 @@ function renderProps() {
   body.innerHTML = html;
 }
 
-function updateEl(id, prop, value) {
+function updateEl(id, prop, value, options = {}) {
   const el = state.elements.find(e => e.id === id);
   if (!el) return;
   if (isLocked(el) && prop !== 'locked') {
@@ -2362,23 +2385,35 @@ function updateEl(id, prop, value) {
   if (el.type === 'text' && ['text','fontSize','fontWeight','fontFamily','lineHeight','letterSpacing'].includes(prop)) {
     el.h = measureTextHeight(el);
   }
+  if (el.type === 'line' && prop === 'strokeW') el.h = Math.max(1, el.strokeW || 2);
   if (prop === 'w') el.w = Math.max(10, el.w);
   if (prop === 'h') el.h = Math.max(10, el.h);
   if (prop === 'r') el.r = Math.max(0, el.r);
+  if (options.live) {
+    render();
+    renderLayers();
+    queueAutosave();
+    return;
+  }
   pushHistory();
   render(); renderLayers(); renderProps();
+}
+
+function liveUpdateEl(id, prop, value) {
+  updateEl(id, prop, value, {live: true});
 }
 
 function toggleStrokeSelected() {
   if (state.selected.length !== 1) return;
   const el = state.elements.find(item => item.id === state.selected[0]);
   if (!el || !['rect','ellipse','line'].includes(el.type)) return;
+  const wasNone = el.stroke === 'none' || !el.stroke;
   if (el.type === 'line') {
-    updateEl(el.id, 'stroke', el.stroke === 'none' ? '#1a1a1a' : 'none');
-    if (el.stroke === 'none') updateEl(el.id, 'strokeW', 2);
+    updateEl(el.id, 'stroke', wasNone ? '#1a1a1a' : 'none');
+    if (wasNone) updateEl(el.id, 'strokeW', 2);
     return;
   }
-  const nextStroke = el.stroke === 'none' ? '#000000' : 'none';
+  const nextStroke = wasNone ? '#000000' : 'none';
   updateEl(el.id, 'stroke', nextStroke);
   if (nextStroke !== 'none') updateEl(el.id, 'strokeW', Math.max(1, el.strokeW || 1));
 }
@@ -2422,12 +2457,15 @@ function getAssetSections() {
       title: 'Marketing',
       items: [
         ['Navbar','nav','⬡','component'],
+        ['Top Bar','nav','⬡','component'],
         ['Hero','hero','⬡','component'],
+        ['Bento Grid','features','⬡','component'],
         ['Card','card','⬡','component'],
         ['Button','button','⬡','component'],
         ['Footer','footer','⬡','component'],
         ['Form','form','⬡','component'],
         ['Pricing','pricing','⬡','component'],
+        ['Pricing Hero','pricing','⬡','component'],
         ['Testimonial','testimonial','⬡','component'],
         ['Feature Grid','features','⬡','component'],
         ['Stats','stats','⬡','component'],
@@ -2441,25 +2479,31 @@ function getAssetSections() {
       items: [
         ['Sidebar','sidebar','⬢','component'],
         ['Dashboard','dashboard','⬢','component'],
+        ['Metrics Board','dashboard','⬢','component'],
         ['Table','table','⬢','component'],
         ['Chart','chart','⬢','component'],
         ['KPI Strip','kpi','⬢','component'],
         ['Tabs','tabs','⬢','component'],
         ['Kanban','kanban','⬢','component'],
+        ['Board View','kanban','⬢','component'],
         ['Timeline','timeline','⬢','component'],
         ['Notification','notification','⬢','component'],
         ['Modal','modal','⬢','component'],
-        ['Chat','chat','⬢','component']
+        ['Chat','chat','⬢','component'],
+        ['Conversation','chat','⬢','component']
       ]
     },
     {
       title: 'App Screens',
       items: [
         ['Login','login','◈','component'],
+        ['Auth Form','login','◈','component'],
         ['Signup','signup','◈','component'],
         ['Profile','profile','◈','component'],
+        ['User Card','profile','◈','component'],
         ['Settings','settings','◈','component'],
-        ['Checkout','checkout','◈','component']
+        ['Checkout','checkout','◈','component'],
+        ['Billing','checkout','◈','component']
       ]
     }
   ];
@@ -2498,7 +2542,7 @@ function renderAssetLibrary() {
         <div class="asset-grid">
           ${section.items.map(([label,key,icon,kind]) => `
             <div class="asset-item" onclick="${kind === 'shape' ? "quickAdd('" + key + "')" : "addComponent('" + key + "')"}">
-              <div class="asset-icon" style="${kind === 'shape' ? '' : 'color:var(--purple)'}">${getAssetIconSVG(key, icon)}</div>
+              <div class="asset-icon" style="${kind === 'shape' ? '' : 'color:#111;background:#f3f4f6;border-radius:8px;width:28px;height:28px;margin:0 auto 4px'}">${getAssetIconSVG(key, icon)}</div>
               <div class="asset-label">${label}</div>
             </div>`).join('')}
         </div>
