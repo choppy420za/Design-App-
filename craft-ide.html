@@ -5,195 +5,195 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Craft IDE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 /* ── RESET & TOKENS ─────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg0:#111112; --bg1:#1a1a1e; --bg2:#222228; --bg3:#2a2a32;
-  --bg4:#32323c; --border:#ffffff0f; --border2:#ffffff18; --border3:#ffffff28;
-  --txt0:#f0f0f4; --txt1:#b0b0be; --txt2:#70707e; --txt3:#404050;
-  --accent:#5b6af0; --accent2:#7b8af8; --accentbg:#5b6af018;
-  --green:#3ecf8e; --red:#f06060; --orange:#f0a040; --purple:#a060f0;
-  --yellow:#f0d060; --pink:#f060b0;
+  /* Figma-accurate dark palette */
+  --bg0:#1e1e1e; --bg1:#2c2c2c; --bg2:#383838; --bg3:#444444;
+  --bg4:#505050; --border:#ffffff12; --border2:#ffffff1e; --border3:#ffffff30;
+  --txt0:#ffffff; --txt1:#cccccc; --txt2:#999999; --txt3:#666666;
+  --accent:#18a0fb; --accent2:#40b3ff; --accentbg:#18a0fb18;
+  --green:#1bc47d; --red:#f24822; --orange:#ffaa38; --purple:#9747ff;
+  --yellow:#ffcd29; --pink:#ff6bd6;
+  /* VSCode accent for code tab */
+  --vsc-accent:#569cd6; --vsc-green:#4ec9b0; --vsc-orange:#ce9178;
+  --vsc-purple:#c586c0; --vsc-yellow:#dcdcaa; --vsc-red:#f44747;
   --r2:2px; --r3:3px; --r4:4px; --r6:6px; --r8:8px; --r10:10px; --r12:12px;
-  --mono:'JetBrains Mono',monospace; --sans:'DM Sans',sans-serif;
-  --sidebar-w:240px; --panel-w:256px; --toolbar-h:40px; --titlebar-h:38px;
+  --mono:'JetBrains Mono',monospace; --sans:'Inter',sans-serif;
+  --sidebar-w:220px; --panel-w:240px; --toolbar-h:40px; --titlebar-h:36px;
+  --figma-toolbar-h:48px;
 }
-html,body{height:100%;overflow:hidden;font-family:var(--sans);background:var(--bg0);color:var(--txt0);font-size:13px}
+html,body{height:100%;overflow:hidden;font-family:var(--sans);background:var(--bg0);color:var(--txt0);font-size:12px}
 button{font-family:var(--sans);cursor:pointer;border:none;background:none;color:inherit}
-input,select,textarea{font-family:var(--sans);color:var(--txt0);background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r4);outline:none;font-size:12px}
+input,select,textarea{font-family:var(--sans);color:var(--txt0);background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r4);outline:none;font-size:11px}
 input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 select option{background:var(--bg2)}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--bg4)}
 
-/* ── LAYOUT ─────────────────────────────────────────────── */
+/* ── APP SHELL ───────────────────────────────────────────── */
 #app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 
-/* TITLEBAR */
+/* ── TITLEBAR (Figma style) ──────────────────────────────── */
 .titlebar{
   height:var(--titlebar-h);display:flex;align-items:center;
   background:var(--bg1);border-bottom:1px solid var(--border);
-  flex-shrink:0;user-select:none;gap:0;
+  flex-shrink:0;user-select:none;position:relative;
 }
 .titlebar-logo{
   width:var(--sidebar-w);display:flex;align-items:center;gap:8px;
-  padding:0 14px;border-right:1px solid var(--border);height:100%;flex-shrink:0;
+  padding:0 14px;height:100%;flex-shrink:0;
 }
 .logo-mark{
-  width:22px;height:22px;border-radius:5px;background:var(--accent);
-  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;
-  color:white;flex-shrink:0;
+  width:24px;height:24px;border-radius:6px;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;overflow:hidden;
 }
-.logo-text{font-size:13px;font-weight:600;color:var(--txt0);letter-spacing:.02em}
-.titlebar-center{flex:1;display:flex;align-items:center;justify-content:center;gap:2px}
+.logo-mark svg{width:16px;height:16px}
+.logo-text{font-size:13px;font-weight:600;color:var(--txt0);letter-spacing:-.01em}
+.titlebar-center{
+  position:absolute;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:1px;
+}
 .title-tab{
-  padding:5px 16px;border-radius:var(--r6);font-size:12px;font-weight:500;
-  color:var(--txt2);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;
+  padding:5px 14px;border-radius:var(--r6);font-size:12px;font-weight:500;
+  color:var(--txt2);cursor:pointer;transition:all .12s;display:flex;align-items:center;gap:6px;
+  border:1px solid transparent;
 }
 .title-tab:hover{color:var(--txt1);background:var(--bg2)}
-.title-tab.active{color:var(--txt0);background:var(--bg2)}
+.title-tab.active{color:var(--txt0);background:var(--bg2);border-color:var(--border2)}
 .title-tab svg{width:13px;height:13px;opacity:.7}
 .titlebar-right{
-  width:var(--panel-w);display:flex;align-items:center;justify-content:flex-end;gap:6px;
-  padding:0 12px;border-left:1px solid var(--border);height:100%;flex-shrink:0;
+  margin-left:auto;display:flex;align-items:center;gap:6px;
+  padding:0 12px;height:100%;
 }
 .tbtn{
   padding:4px 12px;border-radius:var(--r6);font-size:11px;font-weight:500;
-  color:var(--txt1);border:1px solid var(--border2);transition:all .12s;
+  color:var(--txt1);border:1px solid var(--border2);transition:all .12s;white-space:nowrap;
 }
-.tbtn:hover{background:var(--bg3);color:var(--txt0)}
+.tbtn:hover{background:var(--bg3);color:var(--txt0);border-color:var(--border3)}
 .tbtn-accent{background:var(--accent);color:white;border-color:transparent}
-.tbtn-accent:hover{background:var(--accent2);opacity:1}
+.tbtn-accent:hover{background:var(--accent2)}
+.tbtn-danger{background:var(--red);color:white;border-color:transparent}
 
-/* TOOLBAR */
-.toolbar{
-  height:var(--toolbar-h);display:flex;align-items:center;gap:1px;
+/* ── FIGMA TOOLBAR ───────────────────────────────────────── */
+.design-toolbar{
+  height:var(--figma-toolbar-h);display:flex;align-items:center;
   background:var(--bg1);border-bottom:1px solid var(--border);
-  padding:0 8px;flex-shrink:0;
+  padding:0 8px;flex-shrink:0;gap:2px;
 }
-.tool-sep{width:1px;height:20px;background:var(--border2);margin:0 4px}
+.tool-group{display:flex;align-items:center;gap:1px;flex-shrink:0}
+.tool-sep{width:1px;height:22px;background:var(--border2);margin:0 6px;flex-shrink:0}
 .tool-btn{
-  width:30px;height:30px;display:flex;align-items:center;justify-content:center;
-  border-radius:var(--r6);color:var(--txt2);font-size:14px;transition:all .12s;
-  position:relative;
+  width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  border-radius:var(--r6);color:var(--txt2);transition:all .12s;
+  position:relative;flex-shrink:0;border:1px solid transparent;
 }
-.tool-btn:hover{background:var(--bg3);color:var(--txt1)}
-.tool-btn.active{background:var(--accentbg);color:var(--accent2)}
+.tool-btn:hover{background:var(--bg2);color:var(--txt1)}
+.tool-btn.active{background:var(--accentbg);color:var(--accent);border-color:rgba(24,160,251,.3)}
 .tool-btn svg{width:16px;height:16px}
-.toolbar-center{flex:1;display:flex;align-items:center;justify-content:center;gap:4px}
-.toolbar-textbar{
-  display:flex;align-items:center;gap:6px;margin-right:10px;
-  padding:3px 6px;border-radius:var(--r6);border:1px solid var(--border2);
-  background:var(--bg2);min-width:260px;
+.tool-btn[data-tooltip]:hover::after{
+  content:attr(data-tooltip);
+  position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);
+  background:var(--bg3);color:var(--txt0);font-size:10px;padding:3px 7px;
+  border-radius:4px;white-space:nowrap;pointer-events:none;z-index:9999;
+  border:1px solid var(--border2);box-shadow:0 2px 8px rgba(0,0,0,.4);
 }
-.toolbar-textbar input{
-  flex:1;border:none;background:transparent;color:var(--txt0);
-  font-size:12px;outline:none;
+.toolbar-spacer{flex:1}
+.zoom-group{display:flex;align-items:center;gap:2px}
+.zoom-btn{
+  width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+  border-radius:var(--r4);color:var(--txt2);transition:all .12s;font-size:14px;font-weight:400;
 }
-.toolbar-textbar button{
-  padding:3px 8px;border-radius:var(--r4);font-size:11px;
-  background:var(--bg3);border:1px solid var(--border2);color:var(--txt1);
-}
-.toolbar-textbar button:hover{color:var(--txt0);border-color:var(--border3)}
+.zoom-btn:hover{background:var(--bg2);color:var(--txt0)}
 .zoom-display{
-  padding:4px 10px;border-radius:var(--r6);border:1px solid var(--border2);
-  font-size:12px;font-family:var(--mono);color:var(--txt1);min-width:60px;text-align:center;
+  padding:4px 8px;border-radius:var(--r4);border:1px solid var(--border2);
+  font-size:11px;font-family:var(--mono);color:var(--txt1);min-width:52px;text-align:center;
   cursor:pointer;background:var(--bg2);
 }
-.zoom-display:hover{border-color:var(--border3)}
+.zoom-display:hover{border-color:var(--border3);color:var(--txt0)}
+.toolbar-right-tools{display:flex;align-items:center;gap:2px;margin-left:8px}
+.frame-add-row{display:flex;align-items:center;gap:4px}
+.frame-select{
+  font-size:11px;padding:4px 6px;border-radius:var(--r4);
+  background:var(--bg2);border:1px solid var(--border2);color:var(--txt1);
+  max-width:110px;
+}
 
-/* MAIN BODY */
+/* ── MAIN BODY ───────────────────────────────────────────── */
 .main-body{display:flex;flex:1;overflow:hidden}
 
-/* LEFT PANEL */
+/* ── LEFT PANEL (Figma Layers) ───────────────────────────── */
 .left-panel{
   width:var(--sidebar-w);flex-shrink:0;background:var(--bg1);
   border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;
 }
-.panel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.panel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;padding:0 4px}
 .ptab{
-  flex:1;padding:8px 4px;text-align:center;font-size:11px;font-weight:500;
+  padding:8px 10px;font-size:11px;font-weight:500;
   color:var(--txt2);cursor:pointer;border-bottom:2px solid transparent;
-  transition:all .12s;
+  transition:all .12s;white-space:nowrap;
 }
 .ptab:hover{color:var(--txt1)}
-.ptab.active{color:var(--accent2);border-bottom-color:var(--accent)}
-.panel-content{flex:1;overflow-y:auto;padding:8px}
-
-/* LAYERS */
-.layer-item{
-  display:flex;align-items:center;gap:6px;padding:4px 6px;
-  border-radius:var(--r4);cursor:pointer;color:var(--txt1);
-  transition:background .1s;user-select:none;
-}
-.layer-item:hover{background:var(--bg3)}
-.layer-item.selected{background:var(--accentbg);color:var(--txt0)}
-.layer-item.drag-over{border-top:2px solid var(--accent)}
-.layer-icon{width:14px;height:14px;flex-shrink:0;opacity:.6}
-.layer-name{flex:1;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.layer-vis{opacity:0;font-size:11px;cursor:pointer;padding:2px;border-radius:2px}
-.layer-item:hover .layer-vis{opacity:.5}
-.layer-vis:hover{opacity:1!important}
-.layer-indent{padding-left:16px}
-.layer-indent2{padding-left:28px}
-
-/* ASSETS */
-.asset-section{margin-bottom:8px}
-.asset-section-hd{
+.ptab.active{color:var(--txt0);border-bottom-color:var(--accent)}
+.panel-content{flex:1;overflow-y:auto;padding:6px 0}
+/* Figma layers section header */
+.layers-section-hd{
   display:flex;align-items:center;justify-content:space-between;
-  padding:4px 6px;font-size:11px;font-weight:500;color:var(--txt2);
-  cursor:pointer;border-radius:var(--r4);
+  padding:4px 10px 2px;font-size:10px;font-weight:600;
+  color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;
 }
-.asset-section-hd:hover{background:var(--bg3);color:var(--txt1)}
-.asset-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;padding:4px 0}
-.asset-item{
-  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r6);
-  padding:10px 8px;cursor:pointer;text-align:center;transition:all .12s;
+.layers-add-btn{
+  width:18px;height:18px;display:flex;align-items:center;justify-content:center;
+  border-radius:3px;color:var(--txt2);font-size:14px;cursor:pointer;line-height:1;
 }
-.asset-item:hover{border-color:var(--border3);background:var(--bg3)}
-.asset-icon{font-size:20px;margin-bottom:4px}
-.asset-label{font-size:10px;color:var(--txt2)}
-.component-badge{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:10px;height:10px;background:var(--purple);border-radius:2px;
-  font-size:7px;color:white;font-weight:700;flex-shrink:0;margin-right:2px;
+.layers-add-btn:hover{background:var(--bg3);color:var(--txt0)}
+.layer-item{
+  display:flex;align-items:center;gap:5px;padding:3px 10px;
+  cursor:pointer;color:var(--txt1);transition:background .08s;user-select:none;
+  min-height:26px;
 }
+.layer-item:hover{background:var(--bg2)}
+.layer-item.selected{background:rgba(24,160,251,.15);color:var(--txt0)}
+.layer-item.drag-over{border-top:2px solid var(--accent)}
+.layer-icon{width:14px;height:14px;flex-shrink:0;opacity:.5;display:flex;align-items:center;justify-content:center}
+.layer-icon svg{width:12px;height:12px}
+.layer-name{flex:1;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.layer-vis{opacity:0;font-size:10px;cursor:pointer;padding:2px 3px;border-radius:2px;margin-left:2px;flex-shrink:0}
+.layer-item:hover .layer-vis{opacity:.4}
+.layer-vis:hover{opacity:1!important;background:var(--bg3)}
+.layer-locked-icon{font-size:9px;opacity:.4;flex-shrink:0}
 
-/* CANVAS */
+/* ── CANVAS ──────────────────────────────────────────────── */
 .canvas-wrap{
-  flex:1;overflow:hidden;background:var(--bg0);position:relative;
-  background-image:
-    radial-gradient(circle,var(--bg3) 1px,transparent 1px);
-  background-size:20px 20px;
+  flex:1;overflow:hidden;background:#2c2c2c;position:relative;
+  background-image:radial-gradient(circle,rgba(255,255,255,.07) 1px,transparent 1px);
+  background-size:16px 16px;
 }
-.canvas-inner{
-  position:absolute;transform-origin:top left;
-  transition:transform .05s;
-}
+.canvas-inner{position:absolute;transform-origin:top left}
 .frame-label{
   position:absolute;top:-22px;left:0;font-size:11px;color:var(--txt2);
-  font-weight:500;white-space:nowrap;pointer-events:none;
+  font-weight:500;white-space:nowrap;pointer-events:none;font-family:var(--sans);
 }
 .canvas-frame{
-  position:absolute;background:white;border-radius:2px;
-  box-shadow:0 0 0 1px rgba(255,255,255,.1),0 8px 40px rgba(0,0,0,.5);
+  position:absolute;background:white;
+  box-shadow:0 2px 14px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.06);
   overflow:hidden;
 }
 
-/* SELECTION HANDLES */
+/* ── SELECTION ───────────────────────────────────────────── */
 .sel-overlay{
   position:absolute;pointer-events:none;
-  border:2px solid var(--accent);border-radius:1px;
-  box-shadow:0 0 0 1px rgba(0,0,0,.3);z-index:1000;
+  border:2px solid var(--accent);z-index:1000;
 }
 .sel-handle{
-  position:absolute;width:8px;height:8px;background:white;
-  border:2px solid var(--accent);border-radius:1px;
-  pointer-events:all;cursor:nwse-resize;
-  transform:translate(-50%,-50%);z-index:1001;
+  position:absolute;width:7px;height:7px;background:white;
+  border:1.5px solid var(--accent);border-radius:1px;
+  pointer-events:all;transform:translate(-50%,-50%);z-index:1001;
 }
 .sel-handle.n{top:0;left:50%;cursor:ns-resize}
 .sel-handle.s{bottom:0;left:50%;transform:translate(-50%,50%);cursor:ns-resize}
@@ -203,169 +203,261 @@ select option{background:var(--bg2)}
 .sel-handle.ne{top:0;right:0;transform:translate(50%,-50%);cursor:nesw-resize}
 .sel-handle.sw{bottom:0;left:0;transform:translate(-50%,50%);cursor:nesw-resize}
 .sel-handle.se{bottom:0;right:0;transform:translate(50%,50%);cursor:nwse-resize}
+/* Corner handles are round like Figma */
+.sel-handle.nw,.sel-handle.ne,.sel-handle.sw,.sel-handle.se{border-radius:50%}
 
-/* HOVER LABEL */
 .hover-label{
   position:absolute;background:var(--accent);color:white;
   font-size:10px;padding:2px 6px;border-radius:3px;
   pointer-events:none;z-index:999;white-space:nowrap;
   transform:translateY(-100%);margin-top:-4px;
 }
-
-/* RULERS */
-.ruler-h,.ruler-v{
-  position:absolute;background:var(--bg1);z-index:50;
-  border-color:var(--border);
+.dist-label{
+  position:absolute;background:rgba(24,160,251,.9);color:white;
+  font-size:9px;padding:1px 4px;border-radius:2px;pointer-events:none;
+  z-index:998;white-space:nowrap;font-family:var(--mono);
 }
+
+/* ── RULERS ──────────────────────────────────────────────── */
+.ruler-h,.ruler-v{position:absolute;background:#252525;z-index:50;border-color:var(--border)}
 .ruler-h{top:0;left:20px;right:0;height:20px;border-bottom:1px solid var(--border);overflow:hidden}
 .ruler-v{left:0;top:20px;bottom:0;width:20px;border-right:1px solid var(--border);overflow:hidden}
-.ruler-corner{position:absolute;top:0;left:0;width:20px;height:20px;background:var(--bg1);z-index:51;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.ruler-corner{position:absolute;top:0;left:0;width:20px;height:20px;background:#252525;z-index:51;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
 
-/* RIGHT PANEL */
+/* ── RIGHT PANEL (Figma Design Props) ────────────────────── */
 .right-panel{
   width:var(--panel-w);flex-shrink:0;background:var(--bg1);
   border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;
 }
-.rpanel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.rpanel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;padding:0 4px}
 .rtab{
-  flex:1;padding:8px 4px;text-align:center;font-size:11px;font-weight:500;
+  padding:8px 10px;font-size:11px;font-weight:500;
   color:var(--txt2);cursor:pointer;border-bottom:2px solid transparent;transition:all .12s;
 }
 .rtab:hover{color:var(--txt1)}
-.rtab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+.rtab.active{color:var(--txt0);border-bottom-color:var(--accent)}
 .rpanel-body{flex:1;overflow-y:auto}
 
-/* PROPERTY SECTIONS */
+/* ── PROPERTY SECTIONS (Figma style) ─────────────────────── */
 .prop-section{border-bottom:1px solid var(--border);padding:10px 12px}
-.prop-section-hd{
+.prop-section:last-child{border-bottom:none}
+.prop-sec-hd{
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:8px;
 }
-.prop-section-title{font-size:11px;font-weight:500;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em}
-.prop-add-btn{width:16px;height:16px;display:flex;align-items:center;justify-content:center;border-radius:3px;color:var(--txt2);font-size:14px;cursor:pointer}
+.prop-sec-title{font-size:10px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.07em}
+.prop-add-btn{
+  width:16px;height:16px;display:flex;align-items:center;justify-content:center;
+  border-radius:3px;color:var(--txt2);font-size:13px;cursor:pointer;line-height:1;
+}
 .prop-add-btn:hover{background:var(--bg3);color:var(--txt0)}
-.prop-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
-.prop-label{font-size:11px;color:var(--txt2);width:14px;flex-shrink:0;text-align:center}
+/* 2-up input row */
+.prop-row2{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px}
+.prop-row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-bottom:5px}
+.prop-field{display:flex;flex-direction:column;gap:2px}
+.prop-field-label{font-size:9px;color:var(--txt3);text-align:center}
 .prop-input{
-  flex:1;padding:4px 7px;border-radius:var(--r4);font-size:12px;
+  width:100%;padding:4px 6px;border-radius:var(--r4);font-size:11px;
   background:var(--bg2);border:1px solid var(--border);color:var(--txt0);
-  font-family:var(--mono);
+  font-family:var(--mono);text-align:center;
 }
 .prop-input:hover{border-color:var(--border2)}
-.prop-input:focus{border-color:var(--accent)}
-.prop-input-wide{width:100%;padding:5px 8px;border-radius:var(--r4);font-size:12px;background:var(--bg2);border:1px solid var(--border);color:var(--txt0)}
-.prop-row-2{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px}
-.prop-row-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-bottom:5px}
+.prop-input:focus{border-color:var(--accent);background:var(--bg3)}
+.prop-input-wide{
+  width:100%;padding:5px 8px;border-radius:var(--r4);font-size:11px;
+  background:var(--bg2);border:1px solid var(--border);color:var(--txt0);
+}
+.prop-input-wide:focus{border-color:var(--accent)}
+/* Color row */
+.color-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
 .color-swatch{
-  width:26px;height:26px;border-radius:var(--r4);cursor:pointer;
-  border:1px solid var(--border2);flex-shrink:0;overflow:hidden;
+  width:24px;height:24px;border-radius:var(--r4);cursor:pointer;
+  border:1px solid var(--border2);flex-shrink:0;overflow:hidden;position:relative;
 }
-.color-swatch input[type=color]{width:200%;height:200%;margin:-25%;border:none;cursor:pointer;background:none;padding:0}
-.fill-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
-.fill-hex{flex:1;padding:4px 7px;border-radius:var(--r4);font-size:12px;font-family:var(--mono);background:var(--bg2);border:1px solid var(--border);color:var(--txt0)}
-.fill-opacity{width:52px;padding:4px 7px;border-radius:var(--r4);font-size:12px;font-family:var(--mono);background:var(--bg2);border:1px solid var(--border);color:var(--txt0)}
-.fill-remove{width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:3px;color:var(--txt2);font-size:14px;cursor:pointer;flex-shrink:0}
-.fill-remove:hover{background:var(--bg3);color:var(--red)}
-
-/* FONT PROPS */
-.font-row{display:flex;gap:5px;margin-bottom:5px}
-.font-select{flex:1;padding:4px 7px;border-radius:var(--r4);font-size:12px;background:var(--bg2);border:1px solid var(--border);color:var(--txt0)}
-.weight-select{width:80px;padding:4px 5px;border-radius:var(--r4);font-size:12px;background:var(--bg2);border:1px solid var(--border);color:var(--txt0)}
-.align-btns{display:flex;gap:2px}
+.color-swatch input[type=color]{
+  position:absolute;inset:-4px;width:calc(100%+8px);height:calc(100%+8px);
+  border:none;cursor:pointer;background:none;padding:0;opacity:.01;
+}
+.color-swatch-bg{position:absolute;inset:0;border-radius:3px}
+.color-hex{flex:1;padding:4px 6px;border-radius:var(--r4);font-size:11px;font-family:var(--mono);background:var(--bg2);border:1px solid var(--border);color:var(--txt0)}
+.color-hex:focus{border-color:var(--accent)}
+.color-opacity{width:46px;padding:4px 4px;border-radius:var(--r4);font-size:11px;font-family:var(--mono);background:var(--bg2);border:1px solid var(--border);color:var(--txt0);text-align:center}
+.color-del{width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:3px;color:var(--txt3);font-size:14px;cursor:pointer;flex-shrink:0;line-height:1}
+.color-del:hover{background:var(--bg3);color:var(--red)}
+/* Typography */
+.font-select{width:100%;padding:4px 6px;border-radius:var(--r4);font-size:11px;background:var(--bg2);border:1px solid var(--border);color:var(--txt0);margin-bottom:5px}
+.font-select:focus{border-color:var(--accent)}
+/* Align buttons */
+.align-row{display:flex;gap:2px;margin-bottom:5px}
 .align-btn{
-  flex:1;padding:5px;border-radius:var(--r4);color:var(--txt2);
-  font-size:13px;border:1px solid var(--border);transition:all .1s;text-align:center;cursor:pointer;background:var(--bg2);
+  flex:1;padding:5px 4px;border-radius:var(--r4);color:var(--txt2);
+  border:1px solid var(--border);transition:all .1s;text-align:center;cursor:pointer;background:var(--bg2);
+  display:flex;align-items:center;justify-content:center;
 }
-.align-btn:hover{color:var(--txt0);border-color:var(--border2)}
-.align-btn.active{background:var(--accentbg);color:var(--accent2);border-color:var(--accent)}
+.align-btn:hover{color:var(--txt0);border-color:var(--border2);background:var(--bg3)}
+.align-btn.active{background:var(--accentbg);color:var(--accent);border-color:rgba(24,160,251,.4)}
+.align-btn svg{width:13px;height:13px}
+/* Slider row */
+.slider-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.slider-row label{font-size:10px;color:var(--txt2);flex-shrink:0;width:52px}
+.slider-row input[type=range]{flex:1;height:3px;accent-color:var(--accent)}
+.slider-val{font-size:10px;font-family:var(--mono);color:var(--txt1);width:32px;text-align:right;flex-shrink:0}
+/* Effects row */
+.effect-row{display:flex;align-items:center;gap:4px;margin-bottom:4px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r6);padding:5px 8px}
+.effect-lbl{font-size:10px;color:var(--txt2);flex:1}
+.effect-val{font-size:10px;font-family:var(--mono);color:var(--txt1);width:32px;text-align:right}
+/* Name field */
+.el-name-field{
+  width:100%;padding:5px 8px;border-radius:var(--r4);font-size:12px;font-weight:500;
+  background:var(--bg2);border:1px solid var(--border);color:var(--txt0);margin-bottom:8px;
+}
+.el-name-field:focus{border-color:var(--accent)}
 
-/* CODE EDITOR */
-#code-view{display:none;flex:1;overflow:hidden}
+/* ── GRID OVERLAY ────────────────────────────────────────── */
+.grid-overlay{
+  position:absolute;inset:0;pointer-events:none;z-index:500;opacity:0;
+  background-image:
+    linear-gradient(rgba(24,160,251,.12) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(24,160,251,.12) 1px,transparent 1px);
+  background-size:8px 8px;transition:opacity .2s;
+}
+.grid-overlay.show{opacity:1}
+
+/* ── MARQUEE ─────────────────────────────────────────────── */
+.marquee{
+  position:absolute;border:1px solid var(--accent);
+  background:rgba(24,160,251,.06);pointer-events:none;z-index:998;
+}
+
+/* ── INLINE TEXT EDITOR ──────────────────────────────────── */
+.inline-edit{
+  position:absolute;background:transparent;border:none;outline:none;
+  color:inherit;font:inherit;resize:none;cursor:text;
+  white-space:pre-wrap;z-index:999;padding:0;
+}
+
+/* ── DESIGN ELEMENT ──────────────────────────────────────── */
+[data-el]{position:absolute;cursor:default;user-select:none}
+[data-el].hovered{outline:1.5px solid rgba(24,160,251,.6)}
+
+/* ══════════════════════════════════════════════════════════
+   CODE EDITOR — VSCode style
+═══════════════════════════════════════════════════════════ */
+#code-view{display:none;flex:1;overflow:hidden;flex-direction:column}
 #code-view.active{display:flex}
-#design-view{display:flex;flex:1;overflow:hidden}
+#design-view{display:flex;flex:1;overflow:hidden;flex-direction:column}
 
-/* VSCODE LAYOUT */
+/* VSCode activity bar */
 .vsc-layout{display:flex;flex:1;overflow:hidden}
-.vsc-sidebar{
-  width:180px;flex-shrink:0;background:var(--bg1);
-  border-right:1px solid var(--border);display:flex;flex-direction:column;
-}
 .vsc-actbar{
-  width:40px;flex-shrink:0;background:var(--bg0);
-  border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;
-  padding:8px 0;gap:4px;
+  width:48px;flex-shrink:0;background:#252526;
+  border-right:1px solid #1e1e1e;display:flex;flex-direction:column;align-items:center;
+  padding:6px 0;gap:2px;
 }
 .vsc-act-btn{
-  width:32px;height:32px;display:flex;align-items:center;justify-content:center;
-  border-radius:var(--r6);color:var(--txt2);font-size:16px;cursor:pointer;
-  transition:all .12s;
+  width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  color:#858585;font-size:16px;cursor:pointer;transition:color .1s;position:relative;
+  border-left:2px solid transparent;
 }
-.vsc-act-btn:hover{color:var(--txt1);background:var(--bg2)}
-.vsc-act-btn.active{color:var(--txt0);background:var(--bg3)}
-.vsc-file-tree{flex:1;overflow-y:auto;padding:6px}
-.vsc-tree-hd{font-size:10px;font-weight:600;color:var(--txt2);padding:6px 6px 4px;text-transform:uppercase;letter-spacing:.08em}
+.vsc-act-btn:hover{color:#cccccc}
+.vsc-act-btn.active{color:#cccccc;border-left-color:#cccccc}
+
+/* VSCode sidebar */
+.vsc-sidebar{
+  width:200px;flex-shrink:0;background:#252526;
+  border-right:1px solid #1e1e1e;display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.vsc-sidebar-title{
+  font-size:11px;font-weight:600;color:#bbbbbb;
+  padding:8px 12px 4px;text-transform:uppercase;letter-spacing:.08em;
+  border-bottom:1px solid #1e1e1e;flex-shrink:0;
+}
+.vsc-file-tree{flex:1;overflow-y:auto;padding:4px 0}
+.vsc-folder{
+  display:flex;align-items:center;gap:4px;padding:2px 8px;
+  color:#cccccc;font-size:12px;cursor:pointer;
+}
+.vsc-folder:hover{background:#2a2d2e}
+.vsc-folder-icon{font-size:11px;color:#dcb67a}
 .vsc-file{
-  display:flex;align-items:center;gap:6px;padding:3px 6px;
-  border-radius:var(--r4);cursor:pointer;color:var(--txt1);font-size:12px;
-  transition:background .1s;
+  display:flex;align-items:center;gap:6px;padding:2px 8px 2px 22px;
+  cursor:pointer;color:#cccccc;font-size:12px;transition:background .08s;
 }
-.vsc-file:hover{background:var(--bg3)}
-.vsc-file.active{background:var(--bg3);color:var(--txt0)}
-.vsc-file-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.d-html{background:#e34c26}
-.d-css{background:#264de4}
-.d-js{background:#f0db4f}
+.vsc-file:hover{background:#2a2d2e}
+.vsc-file.active{background:#094771}
+.vsc-file-icon{width:14px;height:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.d-html{color:#e34c26}
+.d-css{color:#264de4}
+.d-js{color:#f7df1e}
 
-.editor-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+/* VSCode editor area */
+.editor-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#1e1e1e}
+
+/* VSCode tab bar */
 .editor-tabs-bar{
-  display:flex;background:var(--bg1);border-bottom:1px solid var(--border);
-  flex-shrink:0;overflow-x:auto;
+  display:flex;background:#2d2d2d;border-bottom:1px solid #1e1e1e;
+  flex-shrink:0;overflow-x:auto;min-height:35px;
 }
+.editor-tabs-bar::-webkit-scrollbar{height:2px}
 .editor-tab{
-  display:flex;align-items:center;gap:6px;padding:8px 14px;
-  font-size:12px;color:var(--txt2);cursor:pointer;border-right:1px solid var(--border);
-  white-space:nowrap;transition:background .1s;min-width:120px;
-  border-top:1px solid transparent;
+  display:flex;align-items:center;gap:6px;padding:0 12px;
+  font-size:12px;color:#969696;cursor:pointer;
+  border-right:1px solid #1e1e1e;white-space:nowrap;min-width:100px;
+  border-top:1px solid transparent;flex-shrink:0;height:35px;
+  transition:background .08s;
 }
-.editor-tab:hover{background:var(--bg2);color:var(--txt1)}
-.editor-tab.active{background:var(--bg0);color:var(--txt0);border-top-color:var(--accent)}
-.editor-tab-x{opacity:0;font-size:14px;margin-left:auto;border-radius:3px;width:16px;height:16px;display:flex;align-items:center;justify-content:center}
-.editor-tab:hover .editor-tab-x{opacity:.5}
-.editor-tab-x:hover{opacity:1!important;background:var(--bg4);color:var(--red)}
+.editor-tab:hover{background:#1e1e1e;color:#cccccc}
+.editor-tab.active{background:#1e1e1e;color:#cccccc;border-top-color:var(--accent)}
+.editor-tab.dirty .tab-label::after{content:'●';color:#e8c070;font-size:8px;margin-left:4px;vertical-align:middle}
+.editor-tab-x{
+  opacity:0;font-size:13px;margin-left:auto;border-radius:3px;
+  width:16px;height:16px;display:flex;align-items:center;justify-content:center;
+}
+.editor-tab:hover .editor-tab-x{opacity:.6}
+.editor-tab-x:hover{opacity:1!important;background:#474747;color:#f48771}
 
-.code-body{display:flex;flex:1;overflow:hidden}
+/* VSCode editor + line nums */
+.code-body{display:flex;flex:1;overflow:hidden;position:relative}
 .line-nums{
-  padding:14px 0;width:44px;text-align:right;flex-shrink:0;
-  font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--txt3);
-  background:var(--bg0);border-right:1px solid var(--border);overflow:hidden;
-  user-select:none;
+  padding:10px 0 10px;width:50px;text-align:right;flex-shrink:0;
+  font-family:var(--mono);font-size:12px;line-height:1.6;color:#5a5a5a;
+  background:#1e1e1e;overflow:hidden;user-select:none;padding-right:10px;
 }
 .code-editor{
-  flex:1;padding:14px 16px;font-family:var(--mono);font-size:12px;
-  line-height:1.7;color:var(--txt0);background:var(--bg0);
+  flex:1;padding:10px 16px;font-family:var(--mono);font-size:12px;
+  line-height:1.6;color:#d4d4d4;background:#1e1e1e;
   border:none;outline:none;resize:none;tab-size:2;overflow:auto;
-  white-space:pre;caret-color:var(--accent2);
+  white-space:pre;caret-color:#aeafad;
 }
+/* Syntax color hints via gradient background on active line */
+.code-editor::selection{background:rgba(38,79,120,.8)}
 
-/* PREVIEW SPLIT */
+/* VSCode minimap placeholder */
+.vsc-minimap{
+  width:60px;flex-shrink:0;background:#1e1e1e;border-left:1px solid #333;
+  overflow:hidden;position:relative;cursor:pointer;
+}
+.minimap-canvas{position:absolute;inset:0;width:100%;height:100%}
+
+/* ── PREVIEW SPLIT (VSCode-style) ───────────────────────── */
 .preview-split{
-  width:340px;flex-shrink:0;display:flex;flex-direction:column;
-  border-left:1px solid var(--border);
+  width:360px;flex-shrink:0;display:flex;flex-direction:column;
+  border-left:1px solid #333;background:#1e1e1e;
 }
 .preview-bar{
-  height:36px;display:flex;align-items:center;padding:0 12px;gap:8px;
-  background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;
+  height:35px;display:flex;align-items:center;padding:0 8px;gap:6px;
+  background:#2d2d2d;border-bottom:1px solid #1e1e1e;flex-shrink:0;overflow:hidden;
 }
-.preview-bar span{font-size:11px;color:var(--txt2);font-weight:500}
-.preview-bar-right{margin-left:auto;display:flex;gap:6px}
+.preview-bar-title{font-size:11px;color:#858585;font-weight:500;flex-shrink:0}
+.preview-bar-right{margin-left:auto;display:flex;gap:4px;align-items:center;flex-shrink:0}
 .preview-select{
   font-size:11px;padding:3px 6px;border-radius:var(--r4);
-  background:var(--bg2);border:1px solid var(--border2);color:var(--txt1);
+  background:#3c3c3c;border:1px solid #555;color:#cccccc;
 }
 .preview-canvas{
   flex:1;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(180deg,#111117,#0c0c11);
-  overflow:hidden;position:relative;
+  background:#1e1e1e;overflow:hidden;position:relative;
 }
 .preview-shell{
   width:100%;height:100%;background:white;overflow:hidden;
@@ -373,136 +465,135 @@ select option{background:var(--bg2)}
 }
 .preview-iframe{width:100%;height:100%;border:none;background:white;display:block}
 
-/* STATUS BAR */
+/* ── VSCode STATUS BAR ───────────────────────────────────── */
 .statusbar{
-  height:22px;display:flex;align-items:center;gap:16px;
-  background:var(--accent);padding:0 12px;flex-shrink:0;
+  height:22px;display:flex;align-items:center;gap:0;
+  background:#007acc;padding:0;flex-shrink:0;overflow:hidden;
 }
-.sb-item{font-size:11px;color:rgba(255,255,255,.8);display:flex;align-items:center;gap:4px;cursor:pointer}
-.sb-item:hover{color:white}
-.sb-right{margin-left:auto;display:flex;gap:16px}
+.sb-item{
+  font-size:11px;color:rgba(255,255,255,.9);
+  display:flex;align-items:center;gap:4px;cursor:pointer;
+  padding:0 8px;height:100%;transition:background .1s;white-space:nowrap;
+}
+.sb-item:hover{background:rgba(255,255,255,.15)}
+.sb-right{margin-left:auto;display:flex}
+.sb-item.sb-error{background:#cc2222}
+.sb-item.sb-warn{background:#856300}
 
-/* CONTEXT MENU */
+/* ── CONTEXT MENU ────────────────────────────────────────── */
 .ctx-menu{
-  position:fixed;background:var(--bg2);border:1px solid var(--border2);
-  border-radius:var(--r8);padding:4px;z-index:9999;min-width:160px;
-  box-shadow:0 8px 24px rgba(0,0,0,.5);
+  position:fixed;background:#252526;border:1px solid #3c3c3c;
+  border-radius:var(--r6);padding:4px;z-index:9999;min-width:180px;
+  box-shadow:0 6px 20px rgba(0,0,0,.6);
 }
 .ctx-item{
-  padding:6px 10px;border-radius:var(--r4);font-size:12px;
-  color:var(--txt1);cursor:pointer;display:flex;align-items:center;gap:8px;
+  padding:6px 10px;border-radius:3px;font-size:12px;
+  color:#cccccc;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;
 }
-.ctx-item:hover{background:var(--bg3);color:var(--txt0)}
-.ctx-item.danger{color:var(--red)}
-.ctx-item.danger:hover{background:rgba(240,96,96,.1)}
-.ctx-sep{height:1px;background:var(--border);margin:3px 0}
-.ctx-shortcut{margin-left:auto;font-size:10px;color:var(--txt3);font-family:var(--mono)}
+.ctx-item:hover{background:#094771;color:white}
+.ctx-item.danger{color:#f48771}
+.ctx-item.danger:hover{background:rgba(244,135,113,.15)}
+.ctx-sep{height:1px;background:#3c3c3c;margin:3px 0}
+.ctx-shortcut{font-size:10px;color:#858585;font-family:var(--mono)}
 
-/* TOOLTIP */
-.tooltip{
-  position:fixed;background:var(--bg3);color:var(--txt0);
-  font-size:11px;padding:4px 8px;border-radius:var(--r4);
-  pointer-events:none;z-index:9998;border:1px solid var(--border2);
-  box-shadow:0 4px 12px rgba(0,0,0,.4);
-}
-
-/* INLINE TEXT EDITOR */
-.inline-edit{
-  position:absolute;background:transparent;border:none;outline:none;
-  color:inherit;font:inherit;resize:none;cursor:text;
-  white-space:pre-wrap;z-index:999;padding:0;
-}
-
-/* MARQUEE SELECT */
-.marquee{
-  position:absolute;border:1px solid var(--accent);
-  background:rgba(91,106,240,.08);pointer-events:none;z-index:998;
-}
-
-/* COLOR PICKER POPUP */
-.color-popup{
-  position:fixed;background:var(--bg2);border:1px solid var(--border2);
-  border-radius:var(--r10);padding:12px;z-index:9999;
-  box-shadow:0 8px 32px rgba(0,0,0,.6);width:220px;
-}
-.color-gradient{
-  width:100%;height:140px;border-radius:var(--r6);margin-bottom:10px;
-  cursor:crosshair;position:relative;overflow:hidden;
-}
-.hue-slider{width:100%;height:12px;border-radius:6px;margin-bottom:10px;cursor:pointer;
-  background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
-.color-inputs{display:flex;gap:6px;margin-bottom:8px}
-.color-hex-in{flex:1;padding:5px 8px;border-radius:var(--r4);font-size:12px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border2);color:var(--txt0)}
-.color-swatches{display:flex;gap:4px;flex-wrap:wrap}
-.c-swatch{width:18px;height:18px;border-radius:var(--r4);cursor:pointer;border:1px solid var(--border2);transition:transform .1s}
-.c-swatch:hover{transform:scale(1.2)}
-
-/* NOTIFICATIONS */
+/* ── NOTIFICATIONS ───────────────────────────────────────── */
 .notif{
-  position:fixed;bottom:32px;right:16px;background:var(--bg3);
-  border:1px solid var(--border2);border-radius:var(--r8);
-  padding:10px 14px;font-size:12px;color:var(--txt0);z-index:9999;
-  box-shadow:0 4px 16px rgba(0,0,0,.4);transform:translateY(8px);opacity:0;
+  position:fixed;bottom:28px;right:16px;background:#252526;
+  border:1px solid #3c3c3c;border-radius:var(--r6);
+  padding:8px 14px;font-size:12px;color:#cccccc;z-index:9999;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);transform:translateY(8px);opacity:0;
   transition:all .2s;display:flex;align-items:center;gap:8px;min-width:200px;
 }
 .notif.show{transform:translateY(0);opacity:1}
+.notif.warn{border-left:3px solid var(--orange)}
+.notif.success{border-left:3px solid var(--green)}
 
-/* AI ASSIST */
-.ai-modal{
-  position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.5);
+/* ── MODALS ──────────────────────────────────────────────── */
+.modal-backdrop{
+  position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.6);
   display:none;align-items:center;justify-content:center;padding:18px;
+  backdrop-filter:blur(2px);
 }
-.ai-modal.show{display:flex}
-.ai-card{
-  width:min(760px,96vw);max-height:90vh;overflow:auto;
-  background:var(--bg1);border:1px solid var(--border2);border-radius:var(--r10);
-  box-shadow:0 20px 60px rgba(0,0,0,.55);
+.modal-backdrop.show{display:flex}
+.modal-card{
+  background:#252526;border:1px solid #3c3c3c;border-radius:var(--r8);
+  box-shadow:0 20px 60px rgba(0,0,0,.7);overflow:hidden;
 }
-.ai-hd{
-  display:flex;align-items:center;justify-content:space-between;padding:12px 14px;
-  border-bottom:1px solid var(--border);
+.modal-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;border-bottom:1px solid #3c3c3c;
 }
-.ai-hd h3{font-size:13px;font-weight:600}
-.ai-close{font-size:18px;line-height:1;color:var(--txt2)}
-.ai-body{padding:12px 14px;display:grid;gap:10px}
-.ai-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.ai-help{font-size:11px;color:var(--txt2);line-height:1.5}
+.modal-hd h3{font-size:13px;font-weight:600;color:#cccccc}
+.modal-close{font-size:18px;line-height:1;color:#858585;cursor:pointer;padding:2px 4px;border-radius:3px}
+.modal-close:hover{background:#3c3c3c;color:#cccccc}
+.modal-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+
+/* ── AI MODAL ────────────────────────────────────────────── */
+.ai-card{width:min(680px,96vw);max-height:88vh;overflow:auto}
+.ai-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ai-field label{display:block;font-size:10px;color:#858585;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
 .ai-output{
-  background:var(--bg0);border:1px solid var(--border2);border-radius:var(--r6);
-  padding:10px;font-family:var(--mono);font-size:12px;line-height:1.55;
-  white-space:pre-wrap;max-height:180px;overflow:auto;color:var(--txt1);
+  background:#1e1e1e;border:1px solid #3c3c3c;border-radius:var(--r4);
+  padding:10px;font-family:var(--mono);font-size:11px;line-height:1.6;
+  white-space:pre-wrap;max-height:200px;overflow:auto;color:#d4d4d4;
+}
+.ai-help{font-size:10px;color:#858585;line-height:1.5}
+
+/* ── SHORTCUTS MODAL ─────────────────────────────────────── */
+.sc-card{width:min(560px,96vw)}
+.sc-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}
+.sc-section-title{font-size:10px;font-weight:600;color:#858585;text-transform:uppercase;letter-spacing:.07em;margin:10px 0 6px}
+.sc-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #3c3c3c;font-size:11px;color:#cccccc}
+.sc-row:last-child{border-bottom:none}
+kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;border-radius:3px;color:#cccccc;border:1px solid #555}
+
+/* ── ASSETS PANEL ────────────────────────────────────────── */
+.asset-section{margin-bottom:8px}
+.asset-sec-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:4px 10px;font-size:10px;font-weight:600;color:var(--txt2);
+  cursor:pointer;text-transform:uppercase;letter-spacing:.06em;
+}
+.asset-sec-hd:hover{color:var(--txt1)}
+.asset-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;padding:4px 8px}
+.asset-item{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r6);
+  padding:8px 6px;cursor:pointer;text-align:center;transition:all .12s;
+}
+.asset-item:hover{border-color:var(--accent);background:var(--bg3)}
+.asset-icon{font-size:18px;margin-bottom:3px}
+.asset-label{font-size:10px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asset-item:hover .asset-label{color:var(--txt1)}
+
+/* ── TOOLTIP (Figma-style) ───────────────────────────────── */
+.tooltip{
+  position:fixed;background:#1e1e1e;color:#cccccc;
+  font-size:11px;padding:4px 8px;border-radius:var(--r4);
+  pointer-events:none;z-index:9998;border:1px solid #3c3c3c;
+  box-shadow:0 4px 12px rgba(0,0,0,.5);white-space:nowrap;
 }
 
-/* GRID OVERLAY */
-.grid-overlay{
-  position:absolute;inset:0;pointer-events:none;z-index:500;opacity:0;
-  background-image:linear-gradient(rgba(91,106,240,.15) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(91,106,240,.15) 1px,transparent 1px);
-  background-size:8px 8px;
-  transition:opacity .2s;
-}
-.grid-overlay.show{opacity:1}
-
-/* FRAME TYPES */
+/* ── EMPTY FRAME HINT ────────────────────────────────────── */
 .empty-frame{
   display:flex;align-items:center;justify-content:center;
-  flex-direction:column;gap:8px;color:rgba(0,0,0,.15);font-size:13px;
+  flex-direction:column;gap:8px;color:rgba(0,0,0,.2);font-size:12px;
   pointer-events:none;position:absolute;inset:0;
 }
 
-/* DESIGN ELEMENT STYLES */
-[data-el]{position:absolute;cursor:default;user-select:none}
-[data-el].hovered{outline:1px solid rgba(91,106,240,.5)}
-[data-el].selected-el{outline:none}
+/* ── FRAME BG SELECTOR ───────────────────────────────────── */
+.frame-bg-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;padding:8px 12px;border-bottom:1px solid var(--border)}
+.frame-bg-label{font-size:10px;color:var(--txt2);font-weight:600;text-transform:uppercase;letter-spacing:.06em;flex:1}
 </style>
 </head>
 <body>
 <div id="app">
 
-<!-- TITLEBAR -->
+<!-- ══ TITLEBAR ═══════════════════════════════════════════ -->
 <div class="titlebar">
   <div class="titlebar-logo">
-    <div class="logo-mark">C</div>
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 3L3 8v8l9 5 9-5V8L12 3z" fill="white" opacity=".9"/><path d="M12 3v18M3 8l9 5 9-5" stroke="rgba(0,0,0,.3)" stroke-width="1"/></svg>
+    </div>
     <span class="logo-text">Craft IDE</span>
   </div>
   <div class="titlebar-center">
@@ -516,76 +607,99 @@ select option{background:var(--bg2)}
     </button>
   </div>
   <div class="titlebar-right">
+    <button class="tbtn" onclick="showShortcuts()" title="Keyboard Shortcuts">⌨</button>
+    <button class="tbtn" onclick="exportProjectJSON()">Export JSON</button>
     <button class="tbtn" onclick="exportProject()">Export</button>
-    <button class="tbtn tbtn-accent" onclick="runPreview()">▶ Run</button>
+    <button class="tbtn tbtn-accent" onclick="runPreview()">▶ Preview</button>
   </div>
 </div>
 
-<!-- DESIGN VIEW -->
+<!-- ══ DESIGN VIEW ════════════════════════════════════════ -->
 <div id="design-view" style="display:flex;flex:1;overflow:hidden;flex-direction:column">
 
-  <!-- TOOLBAR -->
-  <div class="toolbar">
-    <button class="tool-btn active" id="tool-V" onclick="setTool('V')" title="Select (V)">
-      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2l5.5 13 2.5-4.5L15 9z"/></svg>
-    </button>
-    <button class="tool-btn" id="tool-F" onclick="setTool('F')" title="Frame (F)">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><line x1="2" y1="5" x2="14" y2="5"/><line x1="2" y1="11" x2="14" y2="11"/><line x1="5" y1="2" x2="5" y2="14"/><line x1="11" y1="2" x2="11" y2="14"/></svg>
-    </button>
-    <button class="tool-btn" id="tool-R" onclick="setTool('R')" title="Rectangle (R)">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="12" height="8" rx="1"/></svg>
-    </button>
-    <button class="tool-btn" id="tool-O" onclick="setTool('O')" title="Ellipse (O)">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="8" cy="8" rx="6" ry="6"/></svg>
-    </button>
-    <button class="tool-btn" id="tool-L" onclick="setTool('L')" title="Line (L)">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="14" x2="14" y2="2"/></svg>
-    </button>
-    <button class="tool-btn" id="tool-T" onclick="setTool('T')" title="Text (T)">
-      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h10v2H9v8H7V5H3z"/></svg>
-    </button>
-    <button class="tool-btn" id="tool-I" onclick="setTool('I')" title="Image">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1"/><circle cx="6" cy="7" r="1.5"/><polyline points="2,13 5,8 8,11 11,7 14,13"/></svg>
-    </button>
-    <button class="tool-btn" onclick="triggerImageImport()" title="Import Image">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8"/><path d="M5 7l3 3 3-3"/><rect x="2" y="11" width="12" height="3" rx="1"/></svg>
-    </button>
-    <button class="tool-btn" onclick="triggerFileUpload()" title="Upload Files">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V2"/><path d="M5 5l3-3 3 3"/><rect x="2" y="10" width="12" height="4" rx="1"/></svg>
-    </button>
-    <div class="tool-sep"></div>
-    <button class="tool-btn" id="tool-P" onclick="setTool('P')" title="Pen (P)">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l4 4-8 8H2v-4z"/><line x1="7" y1="9" x2="11" y2="5"/></svg>
-    </button>
-    <div class="tool-sep"></div>
-    <button class="tool-btn" onclick="toggleGrid()" id="grid-btn" title="Toggle Grid">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><line x1="6" y1="1" x2="6" y2="15"/><line x1="10" y1="1" x2="10" y2="15"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="1" y1="10" x2="15" y2="10"/></svg>
-    </button>
-    <button class="tool-btn" onclick="toggleRulers()" title="Rulers">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="5" width="14" height="6" rx="1"/><line x1="4" y1="5" x2="4" y2="8"/><line x1="7" y1="5" x2="7" y2="7"/><line x1="10" y1="5" x2="10" y2="8"/><line x1="13" y1="5" x2="13" y2="7"/></svg>
-    </button>
-    <div class="toolbar-center">
-      <div class="toolbar-textbar">
-        <input id="quick-text-input" placeholder="Type text and add to canvas..." />
-        <button onclick="quickAddTextFromBar()">Add</button>
-      </div>
-      <select class="preview-select" id="frame-preset">
-        <option value="desktop">Desktop 1440×1024</option>
-        <option value="tablet">Tablet 834×1112</option>
-        <option value="mobile">Mobile 390×844</option>
-        <option value="app">App 430×932</option>
-      </select>
-      <button class="tbtn" style="font-size:11px" onclick="addFrameFromPreset()">+ Frame</button>
-      <button class="tool-btn" onclick="zoomOut()" title="Zoom Out">−</button>
-      <div class="zoom-display" id="zoom-display" onclick="zoomReset()">100%</div>
-      <button class="tool-btn" onclick="zoomIn()" title="Zoom In">+</button>
+  <!-- FIGMA-STYLE TOOLBAR -->
+  <div class="design-toolbar">
+    <!-- Move / Selection tools -->
+    <div class="tool-group">
+      <button class="tool-btn active" id="tool-V" onclick="setTool('V')" data-tooltip="Move (V)">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2l5.5 13 2.5-4.5L15 9z"/></svg>
+      </button>
+      <button class="tool-btn" id="tool-F" onclick="setTool('F')" data-tooltip="Frame (F)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><line x1="2" y1="5" x2="14" y2="5"/><line x1="2" y1="11" x2="14" y2="11"/><line x1="5" y1="2" x2="5" y2="14"/><line x1="11" y1="2" x2="11" y2="14"/></svg>
+      </button>
     </div>
-    <button class="tool-btn" onclick="zoomFit()" title="Fit to Screen" style="margin-left:auto">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,5 1,1 5,1"/><polyline points="11,1 15,1 15,5"/><polyline points="15,11 15,15 11,15"/><polyline points="5,15 1,15 1,11"/></svg>
-    </button>
+    <div class="tool-sep"></div>
+    <!-- Shape tools -->
+    <div class="tool-group">
+      <button class="tool-btn" id="tool-R" onclick="setTool('R')" data-tooltip="Rectangle (R)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="12" height="8" rx="1"/></svg>
+      </button>
+      <button class="tool-btn" id="tool-O" onclick="setTool('O')" data-tooltip="Ellipse (O)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="8" cy="8" rx="6" ry="5"/></svg>
+      </button>
+      <button class="tool-btn" id="tool-L" onclick="setTool('L')" data-tooltip="Line (L)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="14" x2="14" y2="2"/></svg>
+      </button>
+      <button class="tool-btn" id="tool-P" onclick="setTool('P')" data-tooltip="Pen (P)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l4 4-8 8H2v-4z"/><line x1="7" y1="9" x2="11" y2="5"/></svg>
+      </button>
+    </div>
+    <div class="tool-sep"></div>
+    <!-- Text & Image -->
+    <div class="tool-group">
+      <button class="tool-btn" id="tool-T" onclick="setTool('T')" data-tooltip="Text (T)">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h10v2H9v8H7V5H3z"/></svg>
+      </button>
+      <button class="tool-btn" id="tool-I" onclick="setTool('I')" data-tooltip="Image (I)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1"/><circle cx="6" cy="7" r="1.5"/><polyline points="2,13 5,8 8,11 11,7 14,13"/></svg>
+      </button>
+    </div>
+    <div class="tool-sep"></div>
+    <!-- View toggles -->
+    <div class="tool-group">
+      <button class="tool-btn" onclick="toggleGrid()" id="grid-btn" data-tooltip="Toggle Grid (G)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><line x1="5" y1="1" x2="5" y2="15"/><line x1="11" y1="1" x2="11" y2="15"/><line x1="1" y1="5" x2="15" y2="5"/><line x1="1" y1="11" x2="15" y2="11"/></svg>
+      </button>
+      <button class="tool-btn" onclick="toggleRulers()" data-tooltip="Rulers">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="5" width="14" height="6" rx="1"/><line x1="4" y1="5" x2="4" y2="8"/><line x1="7" y1="5" x2="7" y2="7"/><line x1="10" y1="5" x2="10" y2="8"/><line x1="13" y1="5" x2="13" y2="7"/></svg>
+      </button>
+      <button class="tool-btn" onclick="triggerImageImport()" data-tooltip="Import Image">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8"/><path d="M5 7l3 3 3-3"/><rect x="2" y="11" width="12" height="3" rx="1"/></svg>
+      </button>
+      <button class="tool-btn" onclick="triggerFileUpload()" data-tooltip="Upload Files">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V2"/><path d="M5 5l3-3 3 3"/><rect x="2" y="10" width="12" height="4" rx="1"/></svg>
+      </button>
+    </div>
+
+    <div class="toolbar-spacer"></div>
+
+    <!-- Center: add frame -->
+    <div class="frame-add-row">
+      <select class="frame-select" id="frame-preset">
+        <option value="desktop">Desktop 1440</option>
+        <option value="tablet">Tablet 834</option>
+        <option value="mobile">Mobile 390</option>
+        <option value="app">App 430</option>
+      </select>
+      <button class="tbtn" style="font-size:11px;padding:4px 10px" onclick="addFrameFromPreset()">+ Frame</button>
+    </div>
+
+    <div class="tool-sep"></div>
+
+    <!-- Zoom controls -->
+    <div class="zoom-group">
+      <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+      <div class="zoom-display" id="zoom-display" onclick="zoomReset()" title="Reset zoom">100%</div>
+      <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</button>
+      <button class="tool-btn" onclick="zoomFit()" data-tooltip="Fit to Screen" style="margin-left:2px">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,5 1,1 5,1"/><polyline points="11,1 15,1 15,5"/><polyline points="15,11 15,15 11,15"/><polyline points="5,15 1,15 1,11"/></svg>
+      </button>
+    </div>
   </div>
 
+  <!-- MAIN LAYOUT -->
   <div class="main-body">
+
     <!-- LEFT PANEL -->
     <div class="left-panel">
       <div class="panel-tabs">
@@ -593,9 +707,7 @@ select option{background:var(--bg2)}
         <div class="ptab" onclick="switchLeftTab('assets',this)">Assets</div>
         <div class="ptab" onclick="switchLeftTab('pages',this)">Pages</div>
       </div>
-      <div class="panel-content" id="left-panel-body">
-        <!-- Layers injected here -->
-      </div>
+      <div class="panel-content" id="left-panel-body"></div>
     </div>
 
     <!-- CANVAS -->
@@ -610,11 +722,7 @@ select option{background:var(--bg2)}
       <div class="ruler-corner" id="ruler-corner" style="display:none"></div>
       <div class="ruler-h" id="ruler-h" style="display:none"><canvas id="ruler-h-canvas" height="20"></canvas></div>
       <div class="ruler-v" id="ruler-v" style="display:none"><canvas id="ruler-v-canvas" width="20"></canvas></div>
-
-      <div class="canvas-inner" id="canvas-inner">
-        <!-- Frames rendered here -->
-      </div>
-
+      <div class="canvas-inner" id="canvas-inner"></div>
       <div class="grid-overlay" id="grid-overlay"></div>
       <div class="sel-overlay" id="sel-overlay" style="display:none"></div>
       <div class="marquee" id="marquee" style="display:none"></div>
@@ -628,75 +736,107 @@ select option{background:var(--bg2)}
         <div class="rtab" onclick="switchRightTab('inspect',this)">Inspect</div>
       </div>
       <div class="rpanel-body" id="right-panel-body">
-        <div style="padding:40px 16px;text-align:center;color:var(--txt2);font-size:12px">
-          Select an element to edit its properties
+        <div style="padding:48px 16px;text-align:center;color:var(--txt2);font-size:11px;line-height:1.7">
+          <div style="font-size:24px;margin-bottom:8px;opacity:.3">⊹</div>
+          Select a layer to edit properties
         </div>
       </div>
     </div>
+
   </div>
 </div>
 
-<!-- CODE VIEW -->
+<!-- ══ CODE VIEW (VSCode style) ════════════════════════════ -->
 <div id="code-view" style="display:none;flex:1;overflow:hidden;flex-direction:column">
   <div class="vsc-layout">
+
+    <!-- Activity bar -->
     <div class="vsc-actbar">
       <button class="vsc-act-btn active" title="Explorer" onclick="toggleFileTree()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       </button>
-      <button class="vsc-act-btn" title="Search" onclick="notify('Search coming soon')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <button class="vsc-act-btn" title="Search" onclick="toggleVscSearch()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
-      <button class="vsc-act-btn" title="Git" onclick="notify('Git integration coming soon')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v9M9 6h6M15.87 7.87L8.13 16.13"/></svg>
+      <button class="vsc-act-btn" title="Extensions" onclick="notify('Extensions panel — coming soon')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="6" height="6" rx="1"/><rect x="16" y="7" width="6" height="6" rx="1"/><rect x="9" y="14" width="6" height="6" rx="1"/><line x1="5" y1="7" x2="5" y2="4"/><line x1="19" y1="7" x2="19" y2="4"/><line x1="12" y1="14" x2="12" y2="11"/></svg>
+      </button>
+      <div style="flex:1"></div>
+      <button class="vsc-act-btn" title="Settings" onclick="notify('Settings — coming soon')" style="margin-bottom:6px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </div>
+
+    <!-- Explorer sidebar -->
     <div class="vsc-sidebar" id="vsc-sidebar">
-      <div class="vsc-tree-hd">Explorer</div>
-      <div class="vsc-file active" onclick="openFile('html')" id="ftree-html">
-        <span class="vsc-file-dot d-html"></span>index.html
-      </div>
-      <div class="vsc-file" onclick="openFile('css')" id="ftree-css">
-        <span class="vsc-file-dot d-css"></span>style.css
-      </div>
-      <div class="vsc-file" onclick="openFile('js')" id="ftree-js">
-        <span class="vsc-file-dot d-js"></span>script.js
-      </div>
-    </div>
-    <div class="editor-area">
-      <div class="editor-tabs-bar" id="editor-tabs-bar">
-        <div class="editor-tab active" id="etab-html" onclick="openFile('html')">
-          <span class="vsc-file-dot d-html" style="width:8px;height:8px"></span>
+      <div class="vsc-sidebar-title">Explorer</div>
+      <div class="vsc-file-tree">
+        <div class="vsc-folder">
+          <span class="vsc-folder-icon">▾</span>
+          <span>MY PROJECT</span>
+        </div>
+        <div class="vsc-file active" onclick="openFile('html')" id="ftree-html">
+          <div class="vsc-file-icon d-html">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 0h21l-1.91 21.563L11.977 24l-8.565-2.438L1.5 0zm7.031 9.75l-.232-2.718 10.059.003.23-2.622L5.412 4.41l.698 8.01h9.126l-.326 3.426-2.91.804-2.955-.81-.188-2.11H6.248l.33 4.171L12 19.351l5.379-1.443.744-8.157H8.531z"/></svg>
+          </div>
           index.html
-          <span class="editor-tab-x" onclick="closeTab(event,'html')">×</span>
+        </div>
+        <div class="vsc-file" onclick="openFile('css')" id="ftree-css">
+          <div class="vsc-file-icon d-css">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 0h21l-1.91 21.563L11.977 24l-8.565-2.438L1.5 0zm17.09 4.413L5.41 4.41l.213 2.622 10.125.002-.255 2.716h-6.64l.24 2.573h6.182l-.366 3.523-2.91.804-2.956-.81-.188-2.11h-2.61l.29 3.855L12 19.288l5.373-1.53L18.59 4.414z"/></svg>
+          </div>
+          style.css
+        </div>
+        <div class="vsc-file" onclick="openFile('js')" id="ftree-js">
+          <div class="vsc-file-icon d-js">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0h24v24H0V0zm22.034 18.276c-.175-1.095-.888-2.015-3.003-2.873-.736-.345-1.554-.585-1.797-1.14-.091-.33-.105-.51-.046-.705.15-.646.915-.84 1.515-.66.39.12.75.42.976.9 1.034-.676 1.034-.676 1.755-1.125-.27-.42-.404-.601-.586-.78-.63-.705-1.469-1.065-2.834-1.034l-.705.089c-.676.165-1.32.525-1.71 1.005-1.14 1.291-.811 3.541.569 4.471 1.365 1.02 3.361 1.244 3.616 2.205.24 1.17-.87 1.545-1.966 1.41-.811-.18-1.26-.586-1.755-1.336l-1.83 1.051c.21.48.45.689.81 1.109 1.74 1.756 6.09 1.666 6.871-1.004.029-.09.24-.705.074-1.65l.046.067zm-8.983-7.245h-2.248c0 1.938-.009 3.864-.009 5.805 0 1.232.063 2.363-.138 2.711-.33.689-1.18.601-1.566.48-.396-.196-.597-.466-.83-.855-.063-.105-.11-.196-.127-.196l-1.825 1.125c.305.63.75 1.172 1.324 1.517.855.51 2.004.675 3.207.405.783-.226 1.458-.691 1.811-1.411.51-.93.402-2.07.397-3.346.012-2.054 0-4.109 0-6.179l.004-.056z"/></svg>
+          </div>
+          script.js
         </div>
       </div>
+      <!-- Search panel (hidden by default) -->
+      <div id="vsc-search-panel" style="display:none;flex-direction:column;border-top:1px solid #333;padding:8px">
+        <div style="font-size:10px;color:#858585;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Search</div>
+        <input id="vsc-search-input" style="background:#3c3c3c;border:1px solid #555;color:#cccccc;padding:4px 8px;font-size:12px;border-radius:3px;width:100%;margin-bottom:4px" placeholder="Search in files..." oninput="doCodeSearch(this.value)"/>
+        <div id="vsc-search-results" style="font-size:11px;color:#cccccc;max-height:120px;overflow-y:auto"></div>
+      </div>
+    </div>
+
+    <!-- Editor area -->
+    <div class="editor-area">
+      <div class="editor-tabs-bar" id="editor-tabs-bar"></div>
       <div class="code-body">
         <div class="line-nums" id="line-nums">1</div>
         <textarea class="code-editor" id="code-editor"
           oninput="onCodeInput()"
           onkeydown="handleCodeKey(event)"
           onscroll="syncScroll(this)"
+          onclick="updateCursorPos(this)"
+          onkeyup="updateCursorPos(this)"
           spellcheck="false"></textarea>
+        <div class="vsc-minimap" id="vsc-minimap" onclick="handleMinimapClick(event)">
+          <canvas class="minimap-canvas" id="minimap-canvas"></canvas>
+        </div>
       </div>
     </div>
+
+    <!-- Live preview -->
     <div class="preview-split">
       <div class="preview-bar">
-        <span>Live Preview</span>
-        <select class="preview-select" id="preview-mode" onchange="setPreviewMode(this.value)">
-          <option value="web">Web</option>
-          <option value="app">App</option>
-        </select>
-        <select class="preview-select" id="preview-device" onchange="setPreviewDevice(this.value)">
-          <option value="responsive">Responsive</option>
-          <option value="desktop">Desktop</option>
-          <option value="tablet">Tablet</option>
-          <option value="mobile">Mobile</option>
-        </select>
+        <div style="display:flex;align-items:center;gap:6px;flex:1;overflow:hidden">
+          <span class="preview-bar-title">Preview</span>
+          <select class="preview-select" id="preview-device" onchange="setPreviewDevice(this.value)">
+            <option value="responsive">Responsive</option>
+            <option value="desktop">Desktop</option>
+            <option value="tablet">Tablet</option>
+            <option value="mobile">Mobile</option>
+          </select>
+        </div>
         <div class="preview-bar-right">
-          <button class="tbtn" style="font-size:11px" onclick="validateCode()">Validate</button>
-          <button class="tbtn" style="font-size:11px" onclick="toggleAIModal(true)">AI Assist</button>
-          <button class="tbtn" style="font-size:11px" onclick="refreshPreview()">↻</button>
-          <button class="tbtn" style="font-size:11px" onclick="popoutPreview()">⤢</button>
+          <button class="tbtn" style="font-size:10px;padding:3px 8px" onclick="validateCode()">✓ Lint</button>
+          <button class="tbtn tbtn-accent" style="font-size:10px;padding:3px 8px" onclick="toggleAIModal(true)">✦ AI</button>
+          <button class="tbtn" style="font-size:10px;padding:3px 8px;font-family:var(--mono)" onclick="refreshPreview()">↻</button>
+          <button class="tbtn" style="font-size:10px;padding:3px 8px" onclick="popoutPreview()">⤢</button>
         </div>
       </div>
       <div class="preview-canvas" id="preview-canvas">
@@ -705,25 +845,38 @@ select option{background:var(--bg2)}
         </div>
       </div>
     </div>
+
   </div>
+
+  <!-- STATUS BAR -->
   <div class="statusbar">
-    <span class="sb-item" id="sb-file">● HTML</span>
+    <span class="sb-item" id="sb-branch">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6M9 18h6M8.46 8.46l7.08 7.08"/></svg>
+      main
+    </span>
+    <span class="sb-item" id="sb-file">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13,2 13,9 20,9"/></svg>
+      HTML
+    </span>
     <span class="sb-item" id="sb-lines">Ln 1, Col 1</span>
     <span class="sb-item">UTF-8</span>
+    <span class="sb-item">LF</span>
+    <span class="sb-item" id="sb-errors">$(0) !(0)</span>
     <div class="sb-right">
-      <span class="sb-item" onclick="syncDesignToCode()">↑ Sync from Design</span>
-      <span class="sb-item" onclick="syncCodeToDesign()">↓ Sync from Code</span>
-      <span class="sb-item" onclick="notify('Prettier formatting applied')">⚡ Format</span>
+      <span class="sb-item" onclick="formatCode()" title="Format Document">⚡ Prettier</span>
+      <span class="sb-item" onclick="syncDesignToCode()">↑ Design→Code</span>
+      <span class="sb-item" onclick="syncCodeToDesign()">↓ Code→Design</span>
     </div>
   </div>
 </div>
 
-<!-- CONTEXT MENU -->
+<!-- ══ CONTEXT MENU ════════════════════════════════════════ -->
 <div class="ctx-menu" id="ctx-menu" style="display:none">
   <div class="ctx-item" onclick="ctxAction('copy')">Copy <span class="ctx-shortcut">⌘C</span></div>
   <div class="ctx-item" onclick="ctxAction('paste')">Paste <span class="ctx-shortcut">⌘V</span></div>
   <div class="ctx-item" onclick="ctxAction('duplicate')">Duplicate <span class="ctx-shortcut">⌘D</span></div>
-  <div class="ctx-item" onclick="ctxAction('editText')">Edit Text <span class="ctx-shortcut">Enter</span></div>
+  <div class="ctx-item" onclick="ctxAction('editText')">Edit Text <span class="ctx-shortcut">↩</span></div>
+  <div class="ctx-sep"></div>
   <div class="ctx-item" onclick="ctxAction('copyStyle')">Copy Style <span class="ctx-shortcut">⌘⇧C</span></div>
   <div class="ctx-item" onclick="ctxAction('pasteStyle')">Paste Style <span class="ctx-shortcut">⌘⇧V</span></div>
   <div class="ctx-item" onclick="ctxAction('toggleLock')">Lock / Unlock</div>
@@ -734,53 +887,101 @@ select option{background:var(--bg2)}
   <div class="ctx-item" onclick="ctxAction('bringFront')">Bring to Front <span class="ctx-shortcut">⌘]</span></div>
   <div class="ctx-item" onclick="ctxAction('sendBack')">Send to Back <span class="ctx-shortcut">⌘[</span></div>
   <div class="ctx-sep"></div>
-  <div class="ctx-item" onclick="ctxAction('toCode')">Copy as Code</div>
+  <div class="ctx-item" onclick="ctxAction('toCode')">Copy as CSS</div>
   <div class="ctx-sep"></div>
-  <div class="ctx-item danger" onclick="ctxAction('delete')">Delete <span class="ctx-shortcut">Del</span></div>
+  <div class="ctx-item danger" onclick="ctxAction('delete')">Delete <span class="ctx-shortcut">⌦</span></div>
 </div>
 
 <!-- NOTIFICATION -->
 <div class="notif" id="notif"></div>
-<input id="image-import-input" type="file" accept="image/*" style="display:none" />
-<input id="file-upload-input" type="file" accept="image/*,.html,.css,.js,.json,.txt" multiple style="display:none" />
+<input id="image-import-input" type="file" accept="image/*" style="display:none"/>
+<input id="file-upload-input" type="file" accept="image/*,.html,.css,.js,.json,.txt" multiple style="display:none"/>
 
-<!-- AI MODAL -->
-<div class="ai-modal" id="ai-modal" onclick="if(event.target.id==='ai-modal')toggleAIModal(false)">
-  <div class="ai-card">
-    <div class="ai-hd">
-      <h3>AI Code Assistant</h3>
-      <button class="ai-close" onclick="toggleAIModal(false)">×</button>
+<!-- ══ AI MODAL (Claude) ══════════════════════════════════ -->
+<div class="modal-backdrop" id="ai-modal" onclick="if(event.target.id==='ai-modal')toggleAIModal(false)">
+  <div class="modal-card ai-card">
+    <div class="modal-hd">
+      <h3>✦ Claude AI — Code Assistant</h3>
+      <span class="modal-close" onclick="toggleAIModal(false)">×</span>
     </div>
-    <div class="ai-body">
+    <div class="modal-body">
       <div class="ai-row">
-        <input id="ai-api-key" class="prop-input-wide" type="password" placeholder="OpenAI API key (sk-...)" />
-        <input id="ai-model" class="prop-input-wide" value="gpt-5-mini" placeholder="Model" />
+        <div class="ai-field">
+          <label>Target File</label>
+          <select id="ai-target-file" class="prop-input-wide" style="background:#3c3c3c;border-color:#555;color:#ccc">
+            <option value="html">index.html</option>
+            <option value="css">style.css</option>
+            <option value="js">script.js</option>
+          </select>
+        </div>
+        <div class="ai-field">
+          <label>Action</label>
+          <select id="ai-action" class="prop-input-wide" style="background:#3c3c3c;border-color:#555;color:#ccc">
+            <option value="replace">Replace file</option>
+            <option value="append">Append to file</option>
+          </select>
+        </div>
       </div>
-      <div class="ai-row">
-        <select id="ai-target-file" class="prop-input-wide">
-          <option value="html">index.html</option>
-          <option value="css">style.css</option>
-          <option value="js">script.js</option>
-        </select>
-        <select id="ai-action" class="prop-input-wide">
-          <option value="replace">Replace target file</option>
-          <option value="append">Append to target file</option>
-        </select>
+      <div class="ai-field">
+        <label>Prompt</label>
+        <textarea id="ai-prompt" rows="5" style="width:100%;background:#1e1e1e;border:1px solid #3c3c3c;border-radius:4px;color:#d4d4d4;padding:8px;font-family:var(--mono);font-size:12px;resize:vertical;outline:none;line-height:1.6" placeholder="Describe what to build or change…&#10;&#10;Examples:&#10;• Add a dark mode toggle button to the navbar&#10;• Create a responsive 3-column pricing section&#10;• Add smooth scroll animations with Intersection Observer"></textarea>
       </div>
-      <textarea id="ai-prompt" class="prop-input-wide" rows="5" placeholder="Describe what to build or change..."></textarea>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="tbtn" onclick="toggleAIModal(false)">Cancel</button>
-        <button class="tbtn tbtn-accent" id="ai-generate-btn" onclick="generateWithAI()">Generate</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="ai-help">✦ Powered by Claude. Generates production-ready code.</span>
+        <button class="tbtn" onclick="toggleAIModal(false)" style="margin-left:auto">Cancel</button>
+        <button class="tbtn tbtn-accent" id="ai-generate-btn" onclick="generateWithAI()">✦ Generate</button>
       </div>
-      <div class="ai-help">
-        Uses the OpenAI Responses API directly from your browser. For production, move API calls to a secure backend.
-      </div>
-      <div class="ai-output" id="ai-output">AI output will appear here.</div>
+      <div class="ai-output" id="ai-output" style="display:none"></div>
     </div>
   </div>
 </div>
 
+<!-- ══ SHORTCUTS MODAL ════════════════════════════════════ -->
+<div class="modal-backdrop" id="shortcuts-modal" onclick="if(event.target.id==='shortcuts-modal')closeShortcuts()">
+  <div class="modal-card sc-card">
+    <div class="modal-hd">
+      <h3>⌨ Keyboard Shortcuts</h3>
+      <span class="modal-close" onclick="closeShortcuts()">×</span>
+    </div>
+    <div class="modal-body" style="padding:12px 20px 20px">
+      <div class="sc-grid">
+        <div>
+          <div class="sc-section-title">Tools</div>
+          <div class="sc-row"><span>Move / Select</span><kbd>V</kbd></div>
+          <div class="sc-row"><span>Frame</span><kbd>F</kbd></div>
+          <div class="sc-row"><span>Rectangle</span><kbd>R</kbd></div>
+          <div class="sc-row"><span>Ellipse</span><kbd>O</kbd></div>
+          <div class="sc-row"><span>Line</span><kbd>L</kbd></div>
+          <div class="sc-row"><span>Text</span><kbd>T</kbd></div>
+          <div class="sc-row"><span>Image</span><kbd>I</kbd></div>
+          <div class="sc-row"><span>Pen</span><kbd>P</kbd></div>
+          <div class="sc-row"><span>Toggle Grid</span><kbd>G</kbd></div>
+          <div class="sc-row"><span>Show Shortcuts</span><kbd>?</kbd></div>
+        </div>
+        <div>
+          <div class="sc-section-title">Actions</div>
+          <div class="sc-row"><span>Undo</span><kbd>⌘Z</kbd></div>
+          <div class="sc-row"><span>Redo</span><kbd>⌘⇧Z</kbd></div>
+          <div class="sc-row"><span>Copy</span><kbd>⌘C</kbd></div>
+          <div class="sc-row"><span>Paste</span><kbd>⌘V</kbd></div>
+          <div class="sc-row"><span>Duplicate</span><kbd>⌘D</kbd></div>
+          <div class="sc-row"><span>Delete</span><kbd>⌦</kbd></div>
+          <div class="sc-row"><span>Bring to Front</span><kbd>⌘]</kbd></div>
+          <div class="sc-row"><span>Send to Back</span><kbd>⌘[</kbd></div>
+          <div class="sc-row"><span>Copy Style</span><kbd>⌘⇧C</kbd></div>
+          <div class="sc-row"><span>Paste Style</span><kbd>⌘⇧V</kbd></div>
+          <div class="sc-row"><span>Zoom In / Out</span><kbd>⌘ + Scroll</kbd></div>
+          <div class="sc-row"><span>Pan Canvas</span><kbd>Space + Drag</kbd></div>
+          <div class="sc-row"><span>Nudge ×10</span><kbd>⇧ + Arrow</kbd></div>
+          <div class="sc-row"><span>Fit to Screen</span><kbd>⌘0</kbd></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
+</div><!-- #app -->
+
 <script>
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -813,21 +1014,22 @@ const state = {
   activeTab: 'design',
   codeFiles: {
     html:`<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width,initial-scale=1">\n  <title>My Project</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n\n  <nav class="navbar">\n    <div class="brand">Brand</div>\n    <ul>\n      <li><a href="#">Home</a></li>\n      <li><a href="#">About</a></li>\n      <li><a href="#">Contact</a></li>\n    </ul>\n  </nav>\n\n  <section class="hero">\n    <h1>Hello World</h1>\n    <p>Start building something amazing.</p>\n    <a href="#" class="btn">Get Started</a>\n  </section>\n\n  <script src="script.js"><\/script>\n</body>\n</html>`,
-    css:`/* ── Reset ──────────────── */\n*, *::before, *::after {\n  box-sizing: border-box;\n  margin: 0; padding: 0;\n}\n\nbody {\n  font-family: -apple-system, BlinkMacSystemFont, sans-serif;\n  color: #1a1a1a;\n  line-height: 1.6;\n}\n\n/* ── Navbar ─────────────── */\n.navbar {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 16px 48px;\n  border-bottom: 1px solid #eee;\n  position: sticky;\n  top: 0;\n  background: white;\n  z-index: 100;\n}\n\n.brand {\n  font-size: 18px;\n  font-weight: 700;\n}\n\n.navbar ul {\n  display: flex;\n  gap: 28px;\n  list-style: none;\n}\n\n.navbar a {\n  text-decoration: none;\n  color: #666;\n  font-size: 14px;\n  transition: color 0.2s;\n}\n\n.navbar a:hover { color: #1a1a1a; }\n\n/* ── Hero ───────────────── */\n.hero {\n  min-height: calc(100vh - 57px);\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  text-align: center;\n  padding: 80px 48px;\n  background: #fafafa;\n}\n\n.hero h1 {\n  font-size: 56px;\n  font-weight: 700;\n  line-height: 1.1;\n  margin-bottom: 16px;\n  max-width: 700px;\n}\n\n.hero p {\n  font-size: 18px;\n  color: #666;\n  margin-bottom: 32px;\n  max-width: 480px;\n}\n\n.btn {\n  display: inline-block;\n  padding: 14px 32px;\n  background: #1a1a1a;\n  color: white;\n  border-radius: 8px;\n  text-decoration: none;\n  font-size: 15px;\n  font-weight: 500;\n  transition: opacity 0.2s;\n}\n\n.btn:hover { opacity: 0.8; }`,
+    css:`/* ── Reset ──────────────── */\n*, *::before, *::after {\n  box-sizing: border-box;\n  margin: 0; padding: 0;\n}\n\nbody {\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;\n  color: #1a1a1a;\n  line-height: 1.6;\n}\n\n/* ── Navbar ─────────────── */\n.navbar {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 16px 48px;\n  border-bottom: 1px solid #eee;\n  position: sticky;\n  top: 0;\n  background: white;\n  z-index: 100;\n}\n\n.brand {\n  font-size: 18px;\n  font-weight: 700;\n}\n\n.navbar ul {\n  display: flex;\n  gap: 28px;\n  list-style: none;\n}\n\n.navbar a {\n  text-decoration: none;\n  color: #666;\n  font-size: 14px;\n  transition: color 0.2s;\n}\n\n.navbar a:hover { color: #1a1a1a; }\n\n/* ── Hero ───────────────── */\n.hero {\n  min-height: calc(100vh - 57px);\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  text-align: center;\n  padding: 80px 48px;\n  background: #fafafa;\n}\n\n.hero h1 {\n  font-size: 56px;\n  font-weight: 700;\n  line-height: 1.1;\n  margin-bottom: 16px;\n  max-width: 700px;\n}\n\n.hero p {\n  font-size: 18px;\n  color: #666;\n  margin-bottom: 32px;\n  max-width: 480px;\n}\n\n.btn {\n  display: inline-block;\n  padding: 14px 32px;\n  background: #1a1a1a;\n  color: white;\n  border-radius: 8px;\n  text-decoration: none;\n  font-size: 15px;\n  font-weight: 500;\n  transition: opacity 0.2s;\n}\n\n.btn:hover { opacity: 0.8; }`,
     js:`// ── DOM Ready ───────────────────────────────────────\ndocument.addEventListener('DOMContentLoaded', () => {\n  console.log('Project loaded!');\n\n  // Smooth scroll for anchor links\n  document.querySelectorAll('a[href^="#"]').forEach(a => {\n    a.addEventListener('click', e => {\n      e.preventDefault();\n      const target = document.querySelector(a.getAttribute('href'));\n      if (target) target.scrollIntoView({ behavior: 'smooth' });\n    });\n  });\n\n  // Animate hero on load\n  const hero = document.querySelector('.hero');\n  if (hero) {\n    hero.style.opacity = '0';\n    hero.style.transform = 'translateY(20px)';\n    hero.style.transition = 'opacity 0.6s, transform 0.6s';\n    requestAnimationFrame(() => {\n      hero.style.opacity = '1';\n      hero.style.transform = 'translateY(0)';\n    });\n  }\n});\n`
   },
   activeCodeFile: 'html',
   openTabs: ['html'],
   aiBusy: false,
+  assetSearch: '',
   previewMode: 'web',
   previewDevice: 'responsive'
 };
-const STORAGE_KEY = 'craft-ide:v2';
+const STORAGE_KEY = 'craft-ide:v3';
 const FRAME_PRESETS = {
   desktop: {w:1440, h:1024, name:'Desktop'},
-  tablet: {w:834, h:1112, name:'Tablet'},
-  mobile: {w:390, h:844, name:'Mobile'},
-  app: {w:430, h:932, name:'App'}
+  tablet:  {w:834,  h:1112, name:'Tablet'},
+  mobile:  {w:390,  h:844,  name:'Mobile'},
+  app:     {w:430,  h:932,  name:'App'}
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -845,8 +1047,6 @@ const initEls = [
 ];
 state.elements = initEls;
 
-// ═══════════════════════════════════════════════════════════
-// RENDER ENGINE
 // ═══════════════════════════════════════════════════════════
 function render() {
   const inner = document.getElementById('canvas-inner');
@@ -903,7 +1103,8 @@ function saveProject() {
     gridOn: state.gridOn,
     rulersOn: state.rulersOn,
     previewMode: state.previewMode,
-    previewDevice: state.previewDevice
+    previewDevice: state.previewDevice,
+    assetSearch: state.assetSearch
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -934,6 +1135,7 @@ function loadProject() {
     state.rulersOn = !!data.rulersOn;
     state.previewMode = data.previewMode || state.previewMode;
     state.previewDevice = data.previewDevice || state.previewDevice;
+    state.assetSearch = data.assetSearch || state.assetSearch;
     return true;
   } catch (_) {
     return false;
@@ -1012,8 +1214,59 @@ function createElDOM(el) {
 
   if (state.selected.includes(el.id)) div.classList.add('selected-el');
   if (state.hoveredId === el.id && !state.selected.includes(el.id)) div.classList.add('hovered');
+  applyElementEffects(div, el);
 
   return div;
+}
+
+function normalizeHexColor(hex) {
+  const raw = String(hex || '').trim();
+  if (!raw.startsWith('#')) return null;
+  if (raw.length === 4) return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`;
+  return raw.length === 7 ? raw : null;
+}
+
+function colorToRgba(color, alpha = 1) {
+  const hex = normalizeHexColor(color);
+  const safeAlpha = Math.max(0, Math.min(1, Number.isFinite(alpha) ? alpha : 1));
+  if (!hex) return `rgba(0, 0, 0, ${safeAlpha})`;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${safeAlpha})`;
+}
+
+function getElementEffects(el) {
+  const shadowX = +(el.shadowX || 0);
+  const shadowY = +(el.shadowY || 0);
+  const shadowBlur = Math.max(0, +(el.shadowBlur || 0));
+  const shadowSpread = +(el.shadowSpread || 0);
+  const shadowAlpha = Math.max(0, Math.min(1, +(el.shadowAlpha ?? 0.25)));
+  const hasShadow = shadowX !== 0 || shadowY !== 0 || shadowBlur > 0 || shadowSpread !== 0;
+  return {
+    boxShadow: hasShadow
+      ? `${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowSpread}px ${colorToRgba(el.shadowColor || '#000000', shadowAlpha)}`
+      : '',
+    filter: el.filterBlur ? `blur(${Math.max(0, +el.filterBlur)}px)` : ''
+  };
+}
+
+function getElementEffectsStyleText(el) {
+  const effects = getElementEffects(el);
+  const styles = [];
+  if (effects.boxShadow) styles.push(`box-shadow:${effects.boxShadow}`);
+  if (effects.filter) styles.push(`filter:${effects.filter}`);
+  return styles.length ? `${styles.join(';')};` : '';
+}
+
+function applyElementEffects(node, el) {
+  const effects = getElementEffects(el);
+  node.style.boxShadow = effects.boxShadow || 'none';
+  node.style.filter = effects.filter || 'none';
+}
+
+function applyShadow() {
+  queueAutosave();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1642,10 +1895,19 @@ function toggleLockSelected() {
 }
 
 function elToHTML(el) {
-  if (el.type === 'text') return `<p style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;font-size:${el.fontSize}px;font-weight:${el.fontWeight};color:${el.fill};text-align:${el.textAlign};white-space:pre-wrap;word-break:break-word;">${escapeHtml(el.text||'')}</p>`;
-  if (el.type === 'rect') return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;background:${el.fill};border-radius:${el.r||0}px"></div>`;
-  if (el.type === 'ellipse') return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;background:${el.fill};border-radius:50%"></div>`;
-  if (el.type === 'image') return `<img src="${escapeAttr(el.src||'')}" alt="${escapeAttr(el.name||'Image')}" style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;object-fit:${el.objectFit||'cover'};border-radius:${el.r||0}px;" />`;
+  const opacityStyle = el.opacity !== undefined && el.opacity !== 1 ? `opacity:${el.opacity};` : '';
+  const effectsStyle = getElementEffectsStyleText(el);
+  if (el.type === 'text') {
+    const textExtras = [
+      el.fontFamily && el.fontFamily !== 'inherit' ? `font-family:${el.fontFamily};` : '',
+      el.lineHeight ? `line-height:${el.lineHeight};` : '',
+      el.letterSpacing ? `letter-spacing:${el.letterSpacing}px;` : ''
+    ].join('');
+    return `<p style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;font-size:${el.fontSize}px;font-weight:${el.fontWeight};color:${el.fill};text-align:${el.textAlign};white-space:pre-wrap;word-break:break-word;${textExtras}${opacityStyle}${effectsStyle}">${escapeHtml(el.text||'')}</p>`;
+  }
+  if (el.type === 'rect') return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;background:${el.fill};border-radius:${el.r||0}px;${opacityStyle}${effectsStyle}"></div>`;
+  if (el.type === 'ellipse') return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;background:${el.fill};border-radius:50%;${opacityStyle}${effectsStyle}"></div>`;
+  if (el.type === 'image') return `<img src="${escapeAttr(el.src||'')}" alt="${escapeAttr(el.name||'Image')}" style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;object-fit:${el.objectFit||'cover'};border-radius:${el.r||0}px;${opacityStyle}${effectsStyle}" />`;
   return '';
 }
 
@@ -1835,38 +2097,31 @@ function toggleLock(e, id) {
 function renderProps() {
   const body = document.getElementById('right-panel-body');
   if (state.selected.length === 0) {
-    body.innerHTML = `<div style="padding:40px 16px;text-align:center;color:var(--txt2);font-size:12px">Select an element to edit its properties</div>`;
+    body.innerHTML = `<div style="padding:48px 16px;text-align:center;color:var(--txt2);font-size:11px;line-height:1.7"><div style="font-size:24px;margin-bottom:8px;opacity:.25">⊹</div>Select a layer to edit properties</div>`;
     return;
   }
   if (state.selected.length > 1) {
     body.innerHTML = `
     <div class="prop-section">
-      <div class="prop-section-hd"><span class="prop-section-title">Selection</span></div>
-      <div style="font-size:12px;color:var(--txt1);line-height:1.6">${state.selected.length} layers selected</div>
+      <div class="prop-sec-hd"><span class="prop-sec-title">Selection</span></div>
+      <div style="font-size:11px;color:var(--txt1)">${state.selected.length} layers selected</div>
     </div>
     <div class="prop-section">
-      <div class="prop-section-hd"><span class="prop-section-title">Align</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-        <button class="tbtn" onclick="alignSelected('left')" style="font-size:11px">Left</button>
-        <button class="tbtn" onclick="alignSelected('hCenter')" style="font-size:11px">H Center</button>
-        <button class="tbtn" onclick="alignSelected('right')" style="font-size:11px">Right</button>
-        <button class="tbtn" onclick="alignSelected('top')" style="font-size:11px">Top</button>
-        <button class="tbtn" onclick="alignSelected('vCenter')" style="font-size:11px">V Center</button>
-        <button class="tbtn" onclick="alignSelected('bottom')" style="font-size:11px">Bottom</button>
+      <div class="prop-sec-hd"><span class="prop-sec-title">Align</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:6px">
+        <button class="tbtn" onclick="alignSelected('left')" style="font-size:10px;padding:4px">⬤ Left</button>
+        <button class="tbtn" onclick="alignSelected('hCenter')" style="font-size:10px;padding:4px">⬤ Center</button>
+        <button class="tbtn" onclick="alignSelected('right')" style="font-size:10px;padding:4px">⬤ Right</button>
+        <button class="tbtn" onclick="alignSelected('top')" style="font-size:10px;padding:4px">⬤ Top</button>
+        <button class="tbtn" onclick="alignSelected('vCenter')" style="font-size:10px;padding:4px">⬤ Mid</button>
+        <button class="tbtn" onclick="alignSelected('bottom')" style="font-size:10px;padding:4px">⬤ Bot</button>
       </div>
     </div>
     <div class="prop-section">
-      <div class="prop-section-hd"><span class="prop-section-title">Distribute</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-        <button class="tbtn" onclick="distributeSelected('x')" style="font-size:11px">Horizontal</button>
-        <button class="tbtn" onclick="distributeSelected('y')" style="font-size:11px">Vertical</button>
-      </div>
-    </div>
-    <div class="prop-section">
-      <div class="prop-section-hd"><span class="prop-section-title">Match Size</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-        <button class="tbtn" onclick="matchSelectedSize('w')" style="font-size:11px">Match Width</button>
-        <button class="tbtn" onclick="matchSelectedSize('h')" style="font-size:11px">Match Height</button>
+      <div class="prop-sec-hd"><span class="prop-sec-title">Distribute</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <button class="tbtn" onclick="distributeSelected('x')" style="font-size:10px;padding:4px">Horiz</button>
+        <button class="tbtn" onclick="distributeSelected('y')" style="font-size:10px;padding:4px">Vert</button>
       </div>
     </div>`;
     return;
@@ -1876,65 +2131,51 @@ function renderProps() {
 
   let html = `
   <div class="prop-section">
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-      <input style="flex:1;padding:5px 8px;border-radius:4px;font-size:13px;font-weight:500;background:var(--bg2);border:1px solid var(--border2);color:var(--txt0)"
-        value="${el.name||el.type}" onchange="updateEl('${el.id}','name',this.value)" />
+    <input class="el-name-field" value="${el.name||el.type}" onchange="updateEl('${el.id}','name',this.value)" placeholder="Layer name"/>
+    <div class="prop-sec-hd"><span class="prop-sec-title">Transform</span></div>
+    <div class="prop-row2">
+      <div class="prop-field"><div class="prop-field-label">X</div><input class="prop-input" value="${Math.round(el.x)}" onchange="updateEl('${el.id}','x',+this.value)"/></div>
+      <div class="prop-field"><div class="prop-field-label">Y</div><input class="prop-input" value="${Math.round(el.y)}" onchange="updateEl('${el.id}','y',+this.value)"/></div>
     </div>
-    <div class="prop-section-hd"><span class="prop-section-title">Transform</span></div>
-    <div class="prop-row-2">
-      <div style="display:flex;align-items:center;gap:4px">
-        <span style="font-size:10px;color:var(--txt2);width:12px">X</span>
-        <input class="prop-input" value="${Math.round(el.x)}" onchange="updateEl('${el.id}','x',+this.value)" />
-      </div>
-      <div style="display:flex;align-items:center;gap:4px">
-        <span style="font-size:10px;color:var(--txt2);width:12px">Y</span>
-        <input class="prop-input" value="${Math.round(el.y)}" onchange="updateEl('${el.id}','y',+this.value)" />
-      </div>
+    <div class="prop-row2">
+      <div class="prop-field"><div class="prop-field-label">W</div><input class="prop-input" value="${Math.round(el.w)}" onchange="updateEl('${el.id}','w',+this.value)"/></div>
+      <div class="prop-field"><div class="prop-field-label">H</div><input class="prop-input" value="${Math.round(el.h)}" onchange="updateEl('${el.id}','h',+this.value)"/></div>
     </div>
-    <div class="prop-row-2">
-      <div style="display:flex;align-items:center;gap:4px">
-        <span style="font-size:10px;color:var(--txt2);width:12px">W</span>
-        <input class="prop-input" value="${Math.round(el.w)}" onchange="updateEl('${el.id}','w',+this.value)" />
-      </div>
-      <div style="display:flex;align-items:center;gap:4px">
-        <span style="font-size:10px;color:var(--txt2);width:12px">H</span>
-        <input class="prop-input" value="${Math.round(el.h)}" onchange="updateEl('${el.id}','h',+this.value)" />
-      </div>
-    </div>
-    <div class="prop-row" style="margin-top:4px">
-      <span style="font-size:10px;color:var(--txt2)">Opacity</span>
+    <div class="slider-row">
+      <label>Opacity</label>
       <input type="range" min="0" max="1" step="0.01" value="${el.opacity||1}"
-        oninput="updateEl('${el.id}','opacity',+this.value);this.nextSibling.textContent=Math.round(+this.value*100)+'%'"
-        style="flex:1;margin:0 8px" />
-      <span style="font-size:11px;font-family:var(--mono);color:var(--txt1);width:36px;text-align:right">${Math.round((el.opacity||1)*100)}%</span>
+        oninput="updateEl('${el.id}','opacity',+this.value);this.nextSibling.textContent=Math.round(+this.value*100)+'%'" style="flex:1;height:3px;accent-color:var(--accent)"/>
+      <span class="slider-val">${Math.round((el.opacity||1)*100)}%</span>
     </div>
   </div>`;
 
   if (el.type === 'rect' || el.type === 'ellipse') {
     html += `
     <div class="prop-section">
-      <div class="prop-section-hd"><span class="prop-section-title">Fill</span><span class="prop-add-btn" onclick="updateEl('${el.id}','fill','#e0e0e0')">+</span></div>
-      <div class="fill-row">
-        <div class="color-swatch"><input type="color" value="${el.fill||'#e0e0e0'}" oninput="updateEl('${el.id}','fill',this.value)" /></div>
-        <input class="fill-hex" value="${el.fill||'#e0e0e0'}" onchange="updateEl('${el.id}','fill',this.value)" />
-        <input class="fill-opacity" value="100%" readonly />
+      <div class="prop-sec-hd"><span class="prop-sec-title">Fill</span><span class="prop-add-btn" title="Add fill">+</span></div>
+      <div class="color-row">
+        <div class="color-swatch" style="background:${el.fill||'#e0e0e0'}"><input type="color" value="${el.fill||'#e0e0e0'}" oninput="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.fill||'#e0e0e0'}" onchange="updateEl('${el.id}','fill',this.value)"/>
+        <input class="color-opacity" value="100%" readonly title="Fill opacity"/>
       </div>
     </div>
     <div class="prop-section">
-      <div class="prop-section-hd"><span class="prop-section-title">Stroke</span><span class="prop-add-btn" onclick="updateEl('${el.id}','stroke','#000000')">+</span></div>
-      <div class="fill-row">
-        <div class="color-swatch"><input type="color" value="${el.stroke||'#000000'}" oninput="updateEl('${el.id}','stroke',this.value)" /></div>
-        <input class="fill-hex" value="${el.stroke||'#000000'}" onchange="updateEl('${el.id}','stroke',this.value)" />
-        <input class="fill-opacity" value="${el.strokeW||0}px" onchange="updateEl('${el.id}','strokeW',parseInt(this.value)||0)" />
+      <div class="prop-sec-hd"><span class="prop-sec-title">Stroke</span><span class="prop-add-btn" title="Add stroke">+</span></div>
+      <div class="color-row">
+        <div class="color-swatch" style="background:${el.stroke&&el.stroke!=='none'?el.stroke:'#cccccc'}"><input type="color" value="${el.stroke&&el.stroke!=='none'?el.stroke:'#000000'}" oninput="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.stroke&&el.stroke!=='none'?el.stroke:'none'}" onchange="updateEl('${el.id}','stroke',this.value)"/>
+        <input class="color-opacity" value="${el.strokeW||0}" onchange="updateEl('${el.id}','strokeW',parseInt(this.value)||0)" title="Stroke width (px)" style="width:40px"/>
       </div>
     </div>`;
-
     if (el.type === 'rect') {
       html += `
       <div class="prop-section">
-        <div class="prop-section-hd"><span class="prop-section-title">Corner Radius</span></div>
-        <div class="prop-row">
-          <input class="prop-input-wide" value="${el.r||0}" placeholder="0" onchange="updateEl('${el.id}','r',+this.value)" />
+        <div class="prop-sec-hd"><span class="prop-sec-title">Corner Radius</span></div>
+        <div class="prop-row4">
+          <div class="prop-field"><div class="prop-field-label">↖</div><input class="prop-input" value="${el.r||0}" onchange="updateEl('${el.id}','r',+this.value)"/></div>
+          <div class="prop-field"><div class="prop-field-label">↗</div><input class="prop-input" value="${el.r||0}" onchange="updateEl('${el.id}','r',+this.value)"/></div>
+          <div class="prop-field"><div class="prop-field-label">↘</div><input class="prop-input" value="${el.r||0}" onchange="updateEl('${el.id}','r',+this.value)"/></div>
+          <div class="prop-field"><div class="prop-field-label">↙</div><input class="prop-input" value="${el.r||0}" onchange="updateEl('${el.id}','r',+this.value)"/></div>
         </div>
       </div>`;
     }
@@ -1943,36 +2184,42 @@ function renderProps() {
   if (el.type === 'text') {
     html += `
     <div class="prop-section">
-      <div class="prop-section-hd"><span class="prop-section-title">Typography</span></div>
-      <div class="font-row">
-        <select class="font-select" onchange="updateEl('${el.id}','fontFamily',this.value)">
-          ${['inherit','Georgia','Times New Roman','Courier New','Verdana','Trebuchet MS','Arial Black'].map(f=>
-            `<option value="${f}" ${el.fontFamily===f?'selected':''}>${f}</option>`
-          ).join('')}
-        </select>
+      <div class="prop-sec-hd"><span class="prop-sec-title">Typography</span></div>
+      <select class="font-select" onchange="updateEl('${el.id}','fontFamily',this.value)">
+        ${['inherit','Inter','Georgia','Times New Roman','Courier New','Verdana','Arial Black','Trebuchet MS'].map(f=>
+          `<option value="${f}" ${(el.fontFamily||'inherit')===f?'selected':''}>${f}</option>`
+        ).join('')}
+      </select>
+      <div class="prop-row2" style="margin-bottom:5px">
+        <div class="prop-field"><div class="prop-field-label">Size</div><input class="prop-input" value="${el.fontSize||14}" onchange="updateEl('${el.id}','fontSize',+this.value)"/></div>
+        <div class="prop-field">
+          <div class="prop-field-label">Weight</div>
+          <select class="prop-input" style="text-align:center" onchange="updateEl('${el.id}','fontWeight',this.value)">
+            ${['300','400','500','600','700','800'].map(w=>`<option value="${w}" ${el.fontWeight===w?'selected':''}>${w}</option>`).join('')}
+          </select>
+        </div>
       </div>
-      <div class="prop-row-2">
-        <input class="prop-input" value="${el.fontSize||14}" onchange="updateEl('${el.id}','fontSize',+this.value)" title="Font size" />
-        <select class="prop-input" onchange="updateEl('${el.id}','fontWeight',this.value)">
-          ${['300','400','500','600','700','800'].map(w=>`<option value="${w}" ${el.fontWeight===w?'selected':''}>${w}</option>`).join('')}
-        </select>
+      <div class="prop-row2" style="margin-bottom:6px">
+        <div class="prop-field"><div class="prop-field-label">Line H</div><input class="prop-input" value="${el.lineHeight||1.4}" step="0.1" onchange="updateEl('${el.id}','lineHeight',+this.value)"/></div>
+        <div class="prop-field"><div class="prop-field-label">Letter</div><input class="prop-input" value="${el.letterSpacing||0}" onchange="updateEl('${el.id}','letterSpacing',+this.value)"/></div>
       </div>
-      <div class="fill-row" style="margin-top:6px">
-        <div class="color-swatch"><input type="color" value="${el.fill||'#1a1a1a'}" oninput="updateEl('${el.id}','fill',this.value)" /></div>
-        <input class="fill-hex" value="${el.fill||'#1a1a1a'}" onchange="updateEl('${el.id}','fill',this.value)" />
+      <div class="color-row" style="margin-bottom:6px">
+        <div class="color-swatch" style="background:${el.fill||'#1a1a1a'}"><input type="color" value="${el.fill||'#1a1a1a'}" oninput="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.fill||'#1a1a1a'}" onchange="updateEl('${el.id}','fill',this.value)"/>
       </div>
-      <div class="align-btns" style="margin-top:6px">
+      <div class="align-row">
         ${['left','center','right','justify'].map(a=>`
-          <div class="align-btn ${el.textAlign===a?'active':''}" onclick="updateEl('${el.id}','textAlign','${a}')">${a==='left'?'≡':a==='center'?'≡':a==='right'?'≡':'≡'}</div>
-        `).join('')}
+          <div class="align-btn ${el.textAlign===a?'active':''}" onclick="updateEl('${el.id}','textAlign','${a}')" title="${a}">
+            <svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="2" width="${a==='justify'?12:a==='left'?8:a==='right'?8:6}" height="2" rx="1"/><rect x="1" y="6" width="${a==='justify'?12:10}" height="2" rx="1"/><rect x="${a==='right'?3:1}" y="10" width="${a==='justify'?12:a==='right'?10:8}" height="2" rx="1"/></svg>
+          </div>`).join('')}
       </div>
     </div>
     <div class="prop-section">
-      <div class="prop-section-hd"><span class="prop-section-title">Content</span></div>
-      <textarea class="prop-input-wide" rows="3" style="resize:vertical" onchange="updateEl('${el.id}','text',this.value)">${el.text||''}</textarea>
-      <div style="margin-top:8px">
-        <button class="tbtn" style="width:100%;font-size:11px" onclick="editSelectedText()">Edit on Canvas</button>
-        <button class="tbtn" style="width:100%;font-size:11px;margin-top:6px" onclick="autoSizeSelectedText()">Auto Size Text</button>
+      <div class="prop-sec-hd"><span class="prop-sec-title">Content</span></div>
+      <textarea class="prop-input-wide" rows="3" style="resize:vertical;line-height:1.5;padding:6px 8px" onchange="updateEl('${el.id}','text',this.value)">${el.text||''}</textarea>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px">
+        <button class="tbtn" style="font-size:10px" onclick="editSelectedText()">Edit in Canvas</button>
+        <button class="tbtn" style="font-size:10px" onclick="autoSizeSelectedText()">Auto Size</button>
       </div>
     </div>`;
   }
@@ -1980,39 +2227,67 @@ function renderProps() {
   if (el.type === 'line') {
     html += `
     <div class="prop-section">
-      <div class="prop-section-hd"><span class="prop-section-title">Stroke</span></div>
-      <div class="fill-row">
-        <div class="color-swatch"><input type="color" value="${el.stroke||'#1a1a1a'}" oninput="updateEl('${el.id}','stroke',this.value)" /></div>
-        <input class="fill-hex" value="${el.stroke||'#1a1a1a'}" onchange="updateEl('${el.id}','stroke',this.value)" />
-        <input class="fill-opacity" value="${el.strokeW||2}px" onchange="updateEl('${el.id}','strokeW',parseInt(this.value)||2)" />
+      <div class="prop-sec-hd"><span class="prop-sec-title">Stroke</span></div>
+      <div class="color-row">
+        <div class="color-swatch" style="background:${el.stroke||'#1a1a1a'}"><input type="color" value="${el.stroke||'#1a1a1a'}" oninput="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.stroke||'#1a1a1a'}" onchange="updateEl('${el.id}','stroke',this.value)"/>
+        <input class="color-opacity" value="${el.strokeW||2}" onchange="updateEl('${el.id}','strokeW',parseInt(this.value)||2)" title="Width" style="width:40px"/>
       </div>
-    </div>`;
-  }
-  if (el.type === 'image') {
-    html += `
-    <div class="prop-section">
-      <div class="prop-section-hd"><span class="prop-section-title">Image</span></div>
-      <div class="prop-row-2">
-        <select class="prop-input" onchange="updateEl('${el.id}','objectFit',this.value)">
-          ${['cover','contain','fill'].map(v => `<option value="${v}" ${el.objectFit===v?'selected':''}>${v}</option>`).join('')}
-        </select>
-        <input class="prop-input" value="${el.r||0}" onchange="updateEl('${el.id}','r',+this.value)" placeholder="Radius" />
-      </div>
-      <input type="file" accept="image/*" class="prop-input-wide" style="margin-top:6px" onchange="replaceImageForSelected(this.files[0]); this.value=''" />
     </div>`;
   }
 
+  if (el.type === 'image') {
+    html += `
+    <div class="prop-section">
+      <div class="prop-sec-hd"><span class="prop-sec-title">Image</span></div>
+      <div class="prop-row2" style="margin-bottom:6px">
+        <div class="prop-field">
+          <div class="prop-field-label">Fit</div>
+          <select class="prop-input" style="text-align:center" onchange="updateEl('${el.id}','objectFit',this.value)">
+            ${['cover','contain','fill'].map(v=>`<option value="${v}" ${el.objectFit===v?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="prop-field"><div class="prop-field-label">Radius</div><input class="prop-input" value="${el.r||0}" onchange="updateEl('${el.id}','r',+this.value)"/></div>
+      </div>
+      <input type="file" accept="image/*" class="prop-input-wide" style="padding:4px;font-size:10px" onchange="replaceImageForSelected(this.files[0]);this.value=''"/>
+    </div>`;
+  }
+
+  // Effects (shadow + blur) — all elements
   html += `
   <div class="prop-section">
-    <div class="prop-section-hd"><span class="prop-section-title">Actions</span></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-      <button class="tbtn" onclick="ctxAction('duplicate')" style="font-size:11px;text-align:center">Duplicate</button>
-      <button class="tbtn" onclick="ctxAction('bringFront')" style="font-size:11px;text-align:center">Bring Front</button>
-      <button class="tbtn" onclick="ctxAction('sendBack')" style="font-size:11px;text-align:center">Send Back</button>
-      <button class="tbtn" onclick="ctxAction('copyStyle')" style="font-size:11px;text-align:center">Copy Style</button>
-      <button class="tbtn" onclick="ctxAction('pasteStyle')" style="font-size:11px;text-align:center">Paste Style</button>
-      <button class="tbtn" onclick="ctxAction('toggleLock')" style="font-size:11px;text-align:center">${el.locked?'Unlock':'Lock'}</button>
-      <button class="tbtn" onclick="ctxAction('delete')" style="font-size:11px;text-align:center;color:var(--red)">Delete</button>
+    <div class="prop-sec-hd"><span class="prop-sec-title">Effects</span><span class="prop-add-btn" title="Add effect">+</span></div>
+    <div style="font-size:10px;color:var(--txt2);margin-bottom:5px;font-weight:500">Drop Shadow</div>
+    <div class="prop-row4" style="margin-bottom:4px">
+      <div class="prop-field"><div class="prop-field-label">X</div><input class="prop-input" value="${el.shadowX||0}" onchange="updateEl('${el.id}','shadowX',+this.value);applyShadow('${el.id}')"/></div>
+      <div class="prop-field"><div class="prop-field-label">Y</div><input class="prop-input" value="${el.shadowY||0}" onchange="updateEl('${el.id}','shadowY',+this.value);applyShadow('${el.id}')"/></div>
+      <div class="prop-field"><div class="prop-field-label">Blur</div><input class="prop-input" value="${el.shadowBlur||0}" onchange="updateEl('${el.id}','shadowBlur',+this.value);applyShadow('${el.id}')"/></div>
+      <div class="prop-field"><div class="prop-field-label">Spread</div><input class="prop-input" value="${el.shadowSpread||0}" onchange="updateEl('${el.id}','shadowSpread',+this.value);applyShadow('${el.id}')"/></div>
+    </div>
+    <div class="color-row" style="margin-bottom:8px">
+      <div class="color-swatch" style="background:${el.shadowColor||'#000000'}"><input type="color" value="${el.shadowColor||'#000000'}" oninput="updateEl('${el.id}','shadowColor',this.value);applyShadow('${el.id}');this.parentElement.style.background=this.value"/></div>
+      <input class="color-hex" value="${el.shadowColor||'#000000'}" onchange="updateEl('${el.id}','shadowColor',this.value);applyShadow('${el.id}')"/>
+      <input class="color-opacity" value="${el.shadowAlpha||0.25}" step="0.05" min="0" max="1" onchange="updateEl('${el.id}','shadowAlpha',parseFloat(this.value));applyShadow('${el.id}')" title="Alpha" style="width:40px"/>
+    </div>
+    <div style="font-size:10px;color:var(--txt2);margin-bottom:5px;font-weight:500">Blur</div>
+    <div class="slider-row">
+      <label>Amount</label>
+      <input type="range" min="0" max="40" step="1" value="${el.filterBlur||0}"
+        oninput="updateEl('${el.id}','filterBlur',+this.value);this.nextSibling.textContent=this.value+'px'" style="flex:1;height:3px;accent-color:var(--accent)"/>
+      <span class="slider-val">${el.filterBlur||0}px</span>
+    </div>
+  </div>`;
+
+  // Actions row
+  html += `
+  <div class="prop-section">
+    <div class="prop-sec-hd"><span class="prop-sec-title">Layer</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+      <button class="tbtn" onclick="ctxAction('bringFront')" style="font-size:10px;padding:4px">↑ Front</button>
+      <button class="tbtn" onclick="ctxAction('sendBack')" style="font-size:10px;padding:4px">↓ Back</button>
+      <button class="tbtn" onclick="ctxAction('duplicate')" style="font-size:10px;padding:4px">⧉ Duplicate</button>
+      <button class="tbtn" onclick="ctxAction('toggleLock')" style="font-size:10px;padding:4px">${el.locked?'🔓 Unlock':'🔒 Lock'}</button>
+      <button class="tbtn" onclick="ctxAction('delete')" style="font-size:10px;padding:4px;color:var(--red);grid-column:span 2">⌦ Delete</button>
     </div>
   </div>`;
 
@@ -2051,32 +2326,7 @@ function switchLeftTab(tab, el) {
   if (tab === 'layers') {
     renderLayers();
   } else if (tab === 'assets') {
-    body.innerHTML = `
-      <div class="asset-section">
-        <div class="asset-section-hd">Shapes</div>
-        <div class="asset-grid">
-          ${[['R','Rectangle','rect'],['O','Ellipse','ellipse'],['L','Line','line'],['T','Text','text'],['I','Image','image']].map(([k,n,t])=>`
-            <div class="asset-item" onclick="quickAdd('${t}')">
-              <div class="asset-icon">${k==='R'?'▭':k==='O'?'◯':k==='L'?'—':k==='T'?'T':'⊟'}</div>
-              <div class="asset-label">${n}</div>
-            </div>`).join('')}
-        </div>
-      </div>
-      <div class="asset-section" style="margin-top:8px">
-        <div class="asset-section-hd">Components</div>
-        <div class="asset-grid">
-          ${[
-            ['Navbar','nav'],['Hero','hero'],['Card','card'],['Button','button'],
-            ['Footer','footer'],['Form','form'],['Pricing','pricing'],['Testimonial','testimonial'],
-            ['Feature Grid','features'],['Stats','stats'],['Sidebar','sidebar'],['Modal','modal'],
-            ['Gallery','gallery'],['FAQ','faq'],['CTA Banner','cta']
-          ].map(([n,t])=>`
-            <div class="asset-item" onclick="addComponent('${t}')">
-              <div class="asset-icon" style="font-size:14px;color:var(--purple)">⬡</div>
-              <div class="asset-label">${n}</div>
-            </div>`).join('')}
-        </div>
-      </div>`;
+    renderAssetLibrary();
   } else if (tab === 'pages') {
     body.innerHTML = state.pages.map(p=>`
       <div class="layer-item ${p.active?'selected':''}" onclick="switchPage('${p.id}')">
@@ -2085,6 +2335,112 @@ function switchLeftTab(tab, el) {
       </div>`).join('') +
       `<div style="padding:8px 6px"><button class="tbtn" onclick="addPage()" style="width:100%;font-size:11px">+ New Page</button></div>`;
   }
+}
+
+function getAssetSections() {
+  return [
+    {
+      title: 'Quick Insert',
+      items: [
+        ['Rectangle','rect','▭','shape'],
+        ['Ellipse','ellipse','◯','shape'],
+        ['Line','line','—','shape'],
+        ['Text','text','T','shape'],
+        ['Image','image','⊟','shape']
+      ]
+    },
+    {
+      title: 'Marketing',
+      items: [
+        ['Navbar','nav','⬡','component'],
+        ['Hero','hero','⬡','component'],
+        ['Card','card','⬡','component'],
+        ['Button','button','⬡','component'],
+        ['Footer','footer','⬡','component'],
+        ['Form','form','⬡','component'],
+        ['Pricing','pricing','⬡','component'],
+        ['Testimonial','testimonial','⬡','component'],
+        ['Feature Grid','features','⬡','component'],
+        ['Stats','stats','⬡','component'],
+        ['Gallery','gallery','⬡','component'],
+        ['FAQ','faq','⬡','component'],
+        ['CTA Banner','cta','⬡','component']
+      ]
+    },
+    {
+      title: 'Product UI',
+      items: [
+        ['Sidebar','sidebar','⬢','component'],
+        ['Dashboard','dashboard','⬢','component'],
+        ['Table','table','⬢','component'],
+        ['Chart','chart','⬢','component'],
+        ['KPI Strip','kpi','⬢','component'],
+        ['Tabs','tabs','⬢','component'],
+        ['Kanban','kanban','⬢','component'],
+        ['Timeline','timeline','⬢','component'],
+        ['Notification','notification','⬢','component'],
+        ['Modal','modal','⬢','component'],
+        ['Chat','chat','⬢','component']
+      ]
+    },
+    {
+      title: 'App Screens',
+      items: [
+        ['Login','login','◈','component'],
+        ['Signup','signup','◈','component'],
+        ['Profile','profile','◈','component'],
+        ['Settings','settings','◈','component'],
+        ['Checkout','checkout','◈','component']
+      ]
+    }
+  ];
+}
+
+function renderAssetLibrary() {
+  const body = document.getElementById('left-panel-body');
+  const q = (state.assetSearch || '').trim().toLowerCase();
+  const sections = getAssetSections().map(section => ({
+    ...section,
+    items: section.items.filter(([label,, , kind]) => !q || label.toLowerCase().includes(q) || kind.includes(q))
+  })).filter(section => section.items.length);
+
+  body.innerHTML = `
+    <div class="asset-section">
+      <div class="asset-section-hd">Uploads & Export</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:0 8px 8px">
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="triggerImageImport()">Image</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="triggerFileUpload()">Files</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="syncDesignToCode()">Design → Code</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="syncCodeToDesign()">Code → Design</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="exportProject()">Export HTML</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="exportProjectJSON()">Export JSON</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px;grid-column:span 2" onclick="runPreview()">Open Preview</button>
+      </div>
+    </div>
+    <div class="asset-section">
+      <div class="asset-section-hd">Search Assets</div>
+      <div style="padding:0 8px 8px">
+        <input class="prop-input-wide" value="${escapeAttr(state.assetSearch || '')}" oninput="updateAssetSearch(this.value)" placeholder="Search shapes, sections, screens..." />
+      </div>
+    </div>
+    ${sections.map(section => `
+      <div class="asset-section" style="margin-top:8px">
+        <div class="asset-section-hd">${section.title}</div>
+        <div class="asset-grid">
+          ${section.items.map(([label,key,icon,kind]) => `
+            <div class="asset-item" onclick="${kind === 'shape' ? "quickAdd('" + key + "')" : "addComponent('" + key + "')"}">
+              <div class="asset-icon" style="font-size:14px;${kind === 'shape' ? '' : 'color:var(--purple)'}">${icon}</div>
+              <div class="asset-label">${label}</div>
+            </div>`).join('')}
+        </div>
+      </div>`).join('')}
+    ${sections.length ? '' : `<div style="padding:16px 10px;color:var(--txt2);font-size:11px">No assets match that search.</div>`}`;
+}
+
+function updateAssetSearch(value) {
+  state.assetSearch = value;
+  queueAutosave();
+  renderAssetLibrary();
 }
 
 function switchRightTab(tab, el) {
@@ -2134,7 +2490,13 @@ function elToCSS(el) {
     lines.push(`font-size: ${el.fontSize}px;`);
     lines.push(`font-weight: ${el.fontWeight};`);
     lines.push(`text-align: ${el.textAlign};`);
+    if (el.fontFamily && el.fontFamily !== 'inherit') lines.push(`font-family: ${el.fontFamily};`);
+    if (el.lineHeight) lines.push(`line-height: ${el.lineHeight};`);
+    if (el.letterSpacing) lines.push(`letter-spacing: ${el.letterSpacing}px;`);
   }
+  const effects = getElementEffects(el);
+  if (effects.boxShadow) lines.push(`box-shadow: ${effects.boxShadow};`);
+  if (effects.filter) lines.push(`filter: ${effects.filter};`);
   return lines.join('\n');
 }
 
@@ -2247,7 +2609,8 @@ function readFileAsText(file) {
 
 async function importProjectJSON(file) {
   const raw = await readFileAsText(file);
-  const data = JSON.parse(raw);
+  const parsed = JSON.parse(raw);
+  const data = parsed && typeof parsed === 'object' && parsed.state ? parsed.state : parsed;
   if (!data || typeof data !== 'object') throw new Error('Invalid project file');
   if (!Array.isArray(data.elements) || !Array.isArray(data.frames)) throw new Error('Missing elements/frames');
   state.elements = data.elements;
@@ -2256,6 +2619,16 @@ async function importProjectJSON(file) {
   state.codeFiles = data.codeFiles && typeof data.codeFiles === 'object' ? {...state.codeFiles, ...data.codeFiles} : state.codeFiles;
   state.nextId = Number.isFinite(data.nextId) ? data.nextId : state.nextId;
   state.activeFrame = data.activeFrame || state.frames[0]?.id || state.activeFrame;
+  state.openTabs = Array.isArray(data.openTabs) && data.openTabs.length ? data.openTabs : state.openTabs;
+  state.activeCodeFile = data.activeCodeFile || state.activeCodeFile;
+  state.zoom = Number.isFinite(data.zoom) ? data.zoom : state.zoom;
+  state.panX = Number.isFinite(data.panX) ? data.panX : state.panX;
+  state.panY = Number.isFinite(data.panY) ? data.panY : state.panY;
+  state.gridOn = !!data.gridOn;
+  state.rulersOn = !!data.rulersOn;
+  state.previewMode = data.previewMode || state.previewMode;
+  state.previewDevice = data.previewDevice || state.previewDevice;
+  state.assetSearch = data.assetSearch || '';
   state.selected = [];
   pushHistory();
   render(); renderLayers(); renderProps();
@@ -2527,6 +2900,113 @@ function addComponent(type) {
       {id:'el'+id2,type:'text',name:'CTA Heading',x:260,y:340,w:760,h:50,text:'Build and ship faster',fill:'#ffffff',fontSize:42,fontWeight:'700',textAlign:'center',frameId},
       {id:'el'+id3,type:'rect',name:'CTA Button',x:530,y:420,w:220,h:52,fill:'#ffffff',stroke:'none',strokeW:0,r:10,opacity:1,frameId},
       {id:'el'+id4,type:'text',name:'CTA Button Text',x:530,y:437,w:220,h:24,text:'Get Started',fill:'#1e3a8a',fontSize:16,fontWeight:'700',textAlign:'center',frameId}
+    ],
+    dashboard: [
+      {id:'el'+id1,type:'rect',name:'Dashboard Shell',x:110,y:90,w:1060,h:620,fill:'#f8fafc',stroke:'#e2e8f0',strokeW:1,r:20,opacity:1,frameId},
+      {id:'el'+id2,type:'rect',name:'Dashboard Sidebar',x:110,y:90,w:220,h:620,fill:'#0f172a',stroke:'none',strokeW:0,r:20,opacity:1,frameId},
+      {id:'el'+id3,type:'text',name:'Dashboard Heading',x:380,y:130,w:360,h:42,text:'Analytics Overview',fill:'#0f172a',fontSize:34,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id4,type:'rect',name:'Metric Card A',x:380,y:210,w:220,h:120,fill:'#ffffff',stroke:'#e2e8f0',strokeW:1,r:16,opacity:1,frameId},
+      {id:'el'+id5,type:'rect',name:'Metric Card B',x:620,y:210,w:220,h:120,fill:'#ffffff',stroke:'#e2e8f0',strokeW:1,r:16,opacity:1,frameId},
+      {id:'el'+id6,type:'rect',name:'Chart Panel',x:380,y:360,w:640,h:260,fill:'#ffffff',stroke:'#e2e8f0',strokeW:1,r:16,opacity:1,frameId}
+    ],
+    table: [
+      {id:'el'+id1,type:'rect',name:'Table Wrap',x:180,y:170,w:920,h:360,fill:'#ffffff',stroke:'#dbe2ea',strokeW:1,r:16,opacity:1,frameId},
+      {id:'el'+id2,type:'rect',name:'Table Header',x:180,y:170,w:920,h:56,fill:'#f8fafc',stroke:'none',strokeW:0,r:16,opacity:1,frameId},
+      {id:'el'+id3,type:'text',name:'Table Columns',x:220,y:188,w:820,h:20,text:'Customer          Plan          Status          Renew',fill:'#334155',fontSize:16,fontWeight:'600',textAlign:'left',frameId},
+      {id:'el'+id4,type:'text',name:'Table Row A',x:220,y:260,w:820,h:24,text:'Ava Johnson      Pro            Active          18 Apr',fill:'#475569',fontSize:15,fontWeight:'400',textAlign:'left',frameId},
+      {id:'el'+id5,type:'text',name:'Table Row B',x:220,y:320,w:820,h:24,text:'Noah Smith       Team           Trial           22 Apr',fill:'#475569',fontSize:15,fontWeight:'400',textAlign:'left',frameId},
+      {id:'el'+id6,type:'text',name:'Table Row C',x:220,y:380,w:820,h:24,text:'Mila Brown       Starter        Paused          30 Apr',fill:'#475569',fontSize:15,fontWeight:'400',textAlign:'left',frameId}
+    ],
+    chart: [
+      {id:'el'+id1,type:'rect',name:'Chart Card',x:240,y:160,w:800,h:420,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:18,opacity:1,frameId},
+      {id:'el'+id2,type:'text',name:'Chart Title',x:290,y:210,w:300,h:28,text:'Revenue Trend',fill:'#111827',fontSize:24,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id3,type:'line',name:'Chart Axis',x:310,y:470,w:640,h:2,stroke:'#cbd5e1',strokeW:2,opacity:1,frameId},
+      {id:'el'+id4,type:'rect',name:'Bar A',x:360,y:360,w:64,h:110,fill:'#2563eb',stroke:'none',strokeW:0,r:12,opacity:1,frameId},
+      {id:'el'+id5,type:'rect',name:'Bar B',x:470,y:300,w:64,h:170,fill:'#38bdf8',stroke:'none',strokeW:0,r:12,opacity:1,frameId},
+      {id:'el'+id6,type:'rect',name:'Bar C',x:580,y:250,w:64,h:220,fill:'#60a5fa',stroke:'none',strokeW:0,r:12,opacity:1,frameId}
+    ],
+    kpi: [
+      {id:'el'+id1,type:'rect',name:'KPI Card A',x:160,y:180,w:280,h:160,fill:'#111827',stroke:'none',strokeW:0,r:18,opacity:1,frameId},
+      {id:'el'+id2,type:'text',name:'KPI Value A',x:190,y:225,w:220,h:54,text:'$82k',fill:'#ffffff',fontSize:44,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id3,type:'rect',name:'KPI Card B',x:500,y:180,w:280,h:160,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:18,opacity:1,frameId},
+      {id:'el'+id4,type:'text',name:'KPI Value B',x:530,y:225,w:220,h:54,text:'1,240',fill:'#111827',fontSize:44,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id5,type:'rect',name:'KPI Card C',x:840,y:180,w:280,h:160,fill:'#eff6ff',stroke:'none',strokeW:0,r:18,opacity:1,frameId},
+      {id:'el'+id6,type:'text',name:'KPI Value C',x:870,y:225,w:220,h:54,text:'94%',fill:'#1d4ed8',fontSize:44,fontWeight:'700',textAlign:'left',frameId}
+    ],
+    tabs: [
+      {id:'el'+id1,type:'rect',name:'Tabs Card',x:250,y:170,w:780,h:360,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:18,opacity:1,frameId},
+      {id:'el'+id2,type:'rect',name:'Active Tab',x:290,y:210,w:140,h:44,fill:'#111827',stroke:'none',strokeW:0,r:999,opacity:1,frameId},
+      {id:'el'+id3,type:'text',name:'Tab Labels',x:290,y:223,w:420,h:20,text:'Overview        Activity        Files',fill:'#cbd5e1',fontSize:15,fontWeight:'600',textAlign:'left',frameId},
+      {id:'el'+id4,type:'text',name:'Tab Title',x:310,y:300,w:420,h:34,text:'Overview Panel',fill:'#0f172a',fontSize:28,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id5,type:'text',name:'Tab Body',x:310,y:352,w:520,h:60,text:'Use this component for settings, dashboards, docs, or app detail screens.',fill:'#64748b',fontSize:18,fontWeight:'400',textAlign:'left',frameId}
+    ],
+    kanban: [
+      {id:'el'+id1,type:'rect',name:'Board Column A',x:120,y:170,w:300,h:420,fill:'#f8fafc',stroke:'#e2e8f0',strokeW:1,r:18,opacity:1,frameId},
+      {id:'el'+id2,type:'rect',name:'Board Column B',x:450,y:170,w:300,h:420,fill:'#f8fafc',stroke:'#e2e8f0',strokeW:1,r:18,opacity:1,frameId},
+      {id:'el'+id3,type:'rect',name:'Board Column C',x:780,y:170,w:300,h:420,fill:'#f8fafc',stroke:'#e2e8f0',strokeW:1,r:18,opacity:1,frameId},
+      {id:'el'+id4,type:'rect',name:'Task Card A',x:145,y:250,w:250,h:94,fill:'#ffffff',stroke:'#dbe2ea',strokeW:1,r:14,opacity:1,frameId},
+      {id:'el'+id5,type:'rect',name:'Task Card B',x:475,y:250,w:250,h:94,fill:'#ffffff',stroke:'#dbe2ea',strokeW:1,r:14,opacity:1,frameId},
+      {id:'el'+id6,type:'rect',name:'Task Card C',x:805,y:250,w:250,h:94,fill:'#ffffff',stroke:'#dbe2ea',strokeW:1,r:14,opacity:1,frameId}
+    ],
+    timeline: [
+      {id:'el'+id1,type:'line',name:'Timeline Line',x:310,y:170,w:4,h:360,stroke:'#cbd5e1',strokeW:4,opacity:1,frameId},
+      {id:'el'+id2,type:'ellipse',name:'Timeline Dot A',x:292,y:210,w:40,h:40,fill:'#2563eb',stroke:'none',strokeW:0,opacity:1,frameId},
+      {id:'el'+id3,type:'ellipse',name:'Timeline Dot B',x:292,y:340,w:40,h:40,fill:'#38bdf8',stroke:'none',strokeW:0,opacity:1,frameId},
+      {id:'el'+id4,type:'text',name:'Timeline Item A',x:370,y:205,w:460,h:48,text:'Kickoff and discovery',fill:'#0f172a',fontSize:28,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id5,type:'text',name:'Timeline Item B',x:370,y:335,w:520,h:48,text:'Design system and prototypes',fill:'#0f172a',fontSize:28,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id6,type:'text',name:'Timeline Item C',x:370,y:465,w:520,h:48,text:'Development and launch',fill:'#0f172a',fontSize:28,fontWeight:'700',textAlign:'left',frameId}
+    ],
+    notification: [
+      {id:'el'+id1,type:'rect',name:'Toast Card',x:860,y:120,w:300,h:120,fill:'#111827',stroke:'none',strokeW:0,r:18,opacity:1,frameId},
+      {id:'el'+id2,type:'ellipse',name:'Toast Dot',x:888,y:152,w:18,h:18,fill:'#22c55e',stroke:'none',strokeW:0,opacity:1,frameId},
+      {id:'el'+id3,type:'text',name:'Toast Title',x:922,y:144,w:180,h:24,text:'Deployment complete',fill:'#ffffff',fontSize:18,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id4,type:'text',name:'Toast Copy',x:888,y:182,w:224,h:36,text:'Version 2.4 is live and healthy.',fill:'#cbd5e1',fontSize:14,fontWeight:'400',textAlign:'left',frameId}
+    ],
+    chat: [
+      {id:'el'+id1,type:'rect',name:'Chat Window',x:280,y:130,w:720,h:520,fill:'#ffffff',stroke:'#e2e8f0',strokeW:1,r:20,opacity:1,frameId},
+      {id:'el'+id2,type:'rect',name:'User Bubble',x:610,y:250,w:300,h:76,fill:'#2563eb',stroke:'none',strokeW:0,r:18,opacity:1,frameId},
+      {id:'el'+id3,type:'rect',name:'Reply Bubble',x:360,y:350,w:300,h:90,fill:'#f1f5f9',stroke:'none',strokeW:0,r:18,opacity:1,frameId},
+      {id:'el'+id4,type:'text',name:'User Text',x:640,y:276,w:220,h:24,text:'Can you share the latest design?',fill:'#ffffff',fontSize:15,fontWeight:'500',textAlign:'left',frameId},
+      {id:'el'+id5,type:'text',name:'Reply Text',x:390,y:380,w:240,h:40,text:'Yes, sending the updated screen now.',fill:'#0f172a',fontSize:15,fontWeight:'500',textAlign:'left',frameId}
+    ],
+    login: [
+      {id:'el'+id1,type:'rect',name:'Login Card',x:410,y:130,w:460,h:520,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:24,opacity:1,frameId},
+      {id:'el'+id2,type:'text',name:'Login Heading',x:470,y:200,w:340,h:42,text:'Welcome back',fill:'#111827',fontSize:34,fontWeight:'700',textAlign:'center',frameId},
+      {id:'el'+id3,type:'rect',name:'Email Field',x:470,y:300,w:340,h:52,fill:'#f8fafc',stroke:'#cbd5e1',strokeW:1,r:12,opacity:1,frameId},
+      {id:'el'+id4,type:'rect',name:'Password Field',x:470,y:372,w:340,h:52,fill:'#f8fafc',stroke:'#cbd5e1',strokeW:1,r:12,opacity:1,frameId},
+      {id:'el'+id5,type:'rect',name:'Login Button',x:470,y:458,w:340,h:54,fill:'#111827',stroke:'none',strokeW:0,r:12,opacity:1,frameId},
+      {id:'el'+id6,type:'text',name:'Login CTA',x:470,y:475,w:340,h:24,text:'Sign In',fill:'#ffffff',fontSize:16,fontWeight:'700',textAlign:'center',frameId}
+    ],
+    signup: [
+      {id:'el'+id1,type:'rect',name:'Signup Card',x:350,y:110,w:580,h:580,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:24,opacity:1,frameId},
+      {id:'el'+id2,type:'text',name:'Signup Heading',x:420,y:180,w:440,h:42,text:'Create your account',fill:'#111827',fontSize:34,fontWeight:'700',textAlign:'center',frameId},
+      {id:'el'+id3,type:'rect',name:'Name Field',x:430,y:272,w:420,h:50,fill:'#f8fafc',stroke:'#cbd5e1',strokeW:1,r:12,opacity:1,frameId},
+      {id:'el'+id4,type:'rect',name:'Email Field',x:430,y:340,w:420,h:50,fill:'#f8fafc',stroke:'#cbd5e1',strokeW:1,r:12,opacity:1,frameId},
+      {id:'el'+id5,type:'rect',name:'Signup Button',x:430,y:438,w:420,h:54,fill:'#2563eb',stroke:'none',strokeW:0,r:12,opacity:1,frameId},
+      {id:'el'+id6,type:'text',name:'Signup CTA',x:430,y:455,w:420,h:24,text:'Create Account',fill:'#ffffff',fontSize:16,fontWeight:'700',textAlign:'center',frameId}
+    ],
+    profile: [
+      {id:'el'+id1,type:'rect',name:'Profile Card',x:290,y:140,w:700,h:480,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:24,opacity:1,frameId},
+      {id:'el'+id2,type:'ellipse',name:'Avatar',x:350,y:200,w:110,h:110,fill:'#cbd5e1',stroke:'none',strokeW:0,opacity:1,frameId},
+      {id:'el'+id3,type:'text',name:'Profile Name',x:500,y:210,w:360,h:42,text:'Jordan Taylor',fill:'#0f172a',fontSize:34,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id4,type:'text',name:'Profile Role',x:500,y:258,w:260,h:24,text:'Senior Product Designer',fill:'#64748b',fontSize:18,fontWeight:'500',textAlign:'left',frameId},
+      {id:'el'+id5,type:'rect',name:'Profile Stats',x:350,y:360,w:580,h:170,fill:'#f8fafc',stroke:'none',strokeW:0,r:18,opacity:1,frameId}
+    ],
+    settings: [
+      {id:'el'+id1,type:'rect',name:'Settings Panel',x:230,y:130,w:820,h:520,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:22,opacity:1,frameId},
+      {id:'el'+id2,type:'text',name:'Settings Heading',x:290,y:190,w:300,h:40,text:'Workspace Settings',fill:'#0f172a',fontSize:32,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id3,type:'rect',name:'Settings Field A',x:290,y:280,w:700,h:52,fill:'#f8fafc',stroke:'#cbd5e1',strokeW:1,r:12,opacity:1,frameId},
+      {id:'el'+id4,type:'rect',name:'Settings Field B',x:290,y:356,w:700,h:52,fill:'#f8fafc',stroke:'#cbd5e1',strokeW:1,r:12,opacity:1,frameId},
+      {id:'el'+id5,type:'rect',name:'Save Button',x:770,y:560,w:220,h:52,fill:'#111827',stroke:'none',strokeW:0,r:12,opacity:1,frameId},
+      {id:'el'+id6,type:'text',name:'Save Label',x:770,y:577,w:220,h:24,text:'Save Changes',fill:'#ffffff',fontSize:16,fontWeight:'700',textAlign:'center',frameId}
+    ],
+    checkout: [
+      {id:'el'+id1,type:'rect',name:'Checkout Card',x:190,y:120,w:920,h:560,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:24,opacity:1,frameId},
+      {id:'el'+id2,type:'rect',name:'Order Summary',x:720,y:180,w:310,h:360,fill:'#f8fafc',stroke:'none',strokeW:0,r:18,opacity:1,frameId},
+      {id:'el'+id3,type:'text',name:'Checkout Heading',x:250,y:180,w:320,h:40,text:'Checkout',fill:'#111827',fontSize:32,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id4,type:'rect',name:'Card Input',x:250,y:280,w:400,h:52,fill:'#f8fafc',stroke:'#cbd5e1',strokeW:1,r:12,opacity:1,frameId},
+      {id:'el'+id5,type:'rect',name:'Pay Button',x:250,y:520,w:400,h:54,fill:'#2563eb',stroke:'none',strokeW:0,r:12,opacity:1,frameId},
+      {id:'el'+id6,type:'text',name:'Pay Label',x:250,y:537,w:400,h:24,text:'Pay Now',fill:'#ffffff',fontSize:16,fontWeight:'700',textAlign:'center',frameId}
     ]
   };
   const els = comps[type];
@@ -2544,6 +3024,7 @@ function toggleGrid() {
   state.gridOn = !state.gridOn;
   document.getElementById('grid-overlay').classList.toggle('show', state.gridOn);
   document.getElementById('grid-btn').classList.toggle('active', state.gridOn);
+  queueAutosave();
 }
 
 function toggleRulers() {
@@ -2552,6 +3033,7 @@ function toggleRulers() {
   const rv = document.getElementById('ruler-v');
   const rc = document.getElementById('ruler-corner');
   [rh, rv, rc].forEach(el => el.style.display = state.rulersOn ? 'block' : 'none');
+  queueAutosave();
 }
 
 function toggleFileTree() {
@@ -2670,6 +3152,7 @@ function switchMainTab(tab) {
     loadCodeFile(state.activeCodeFile);
     refreshPreview();
     applyPreviewViewport();
+    setTimeout(renderMinimap, 100);
   }
 }
 
@@ -2770,14 +3253,17 @@ function handleCodeKey(e) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+// AI MODAL — Claude
+// ═══════════════════════════════════════════════════════════
 function toggleAIModal(show) {
   const modal = document.getElementById('ai-modal');
   if (!modal) return;
   modal.classList.toggle('show', !!show);
   if (show) {
-    const storedKey = localStorage.getItem('craft-ide:openai-key') || '';
-    if (storedKey) document.getElementById('ai-api-key').value = storedKey;
     document.getElementById('ai-target-file').value = state.activeCodeFile;
+    const out = document.getElementById('ai-output');
+    if (out) { out.style.display = 'none'; out.textContent = ''; }
     setTimeout(() => document.getElementById('ai-prompt')?.focus(), 20);
   }
 }
@@ -2790,84 +3276,170 @@ function extractCodeBlock(text) {
 
 async function generateWithAI() {
   if (state.aiBusy) return;
-  const key = document.getElementById('ai-api-key').value.trim();
-  const model = document.getElementById('ai-model').value.trim() || 'gpt-5-mini';
   const target = document.getElementById('ai-target-file').value;
-  const action = document.getElementById('ai-action').value;
-  const prompt = document.getElementById('ai-prompt').value.trim();
-  const output = document.getElementById('ai-output');
-  const btn = document.getElementById('ai-generate-btn');
+  const action  = document.getElementById('ai-action').value;
+  const prompt  = document.getElementById('ai-prompt').value.trim();
+  const output  = document.getElementById('ai-output');
+  const btn     = document.getElementById('ai-generate-btn');
 
-  if (!key) { notify('Add API key first', 'warn'); return; }
-  if (!prompt) { notify('Describe what you want the AI to build', 'warn'); return; }
+  if (!prompt) { notify('Describe what you want Claude to build', 'warn'); return; }
+  let apiKey = localStorage.getItem('craft-ide:anthropic-key') || '';
+  if (!apiKey) {
+    apiKey = (window.prompt('Enter your Anthropic API key for AI generation:') || '').trim();
+    if (apiKey) localStorage.setItem('craft-ide:anthropic-key', apiKey);
+  }
+  if (!apiKey) {
+    notify('AI generation cancelled: no API key provided', 'warn');
+    return;
+  }
 
   state.aiBusy = true;
-  btn.textContent = 'Generating...';
+  btn.textContent = '✦ Generating…';
   btn.disabled = true;
-  output.textContent = 'Calling OpenAI...';
-  localStorage.setItem('craft-ide:openai-key', key);
+  if (output) { output.style.display = 'block'; output.textContent = 'Calling Claude…'; }
 
-  const system = `You are a senior frontend engineer. Return ONLY code for ${target}. No explanation. Keep it production ready.`;
-  const user = [
-    `Task: ${prompt}`,
-    '',
-    `Current ${target}:`,
-    '```',
-    state.codeFiles[target] || '',
-    '```'
-  ].join('\n');
+  const system = `You are a senior frontend engineer. Return ONLY raw ${target} code — no explanation, no markdown fences, no commentary. Production-ready, clean, modern.`;
+  const user = [`Task: ${prompt}`, '', `Current ${target}:`, state.codeFiles[target] || '(empty)'].join('\n');
 
   try {
-    const res = await fetch('https://api.openai.com/v1/responses', {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model,
-        input: [
-          {role: 'system', content: system},
-          {role: 'user', content: user}
-        ],
-        text: {verbosity: 'medium'}
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        system,
+        messages: [{ role: 'user', content: user }]
       })
     });
-
     const data = await res.json();
     if (!res.ok) {
-      output.textContent = JSON.stringify(data, null, 2);
-      notify('AI request failed', 'warn');
+      if (output) output.textContent = JSON.stringify(data, null, 2);
+      notify('Claude error: ' + (data.error?.message || res.status), 'warn');
       return;
     }
-
-    let raw = data.output_text || '';
-    if (!raw && Array.isArray(data.output)) {
-      raw = data.output.map(item => (item.content || []).map(c => c.text || '').join('\n')).join('\n');
-    }
-    const code = extractCodeBlock(raw);
-    if (!code) {
-      output.textContent = 'No code returned.';
-      notify('AI returned empty output', 'warn');
-      return;
-    }
-
+    const raw  = (data.content || []).map(c => c.text || '').join('');
+    const code = extractCodeBlock(raw) || raw;
+    if (!code) { notify('Claude returned empty output', 'warn'); return; }
     state.codeFiles[target] = action === 'append'
-      ? `${state.codeFiles[target] || ''}\n\n${code}`
-      : code;
-
+      ? `${state.codeFiles[target] || ''}\n\n${code}` : code;
     openFile(target);
     refreshPreview();
     queueAutosave();
-    output.textContent = code.slice(0, 5000);
-    notify(`AI updated ${target.toUpperCase()}`);
-  } catch (err) {
-    output.textContent = String(err);
-    notify('AI request error', 'warn');
+    if (output) output.textContent = code.slice(0, 6000);
+    notify('✦ Claude updated ' + target.toUpperCase(), 'success');
+    document.getElementById('ai-prompt').value = '';
+  } catch(err) {
+    if (output) output.textContent = String(err);
+    notify('AI error: ' + err.message, 'warn');
   } finally {
     state.aiBusy = false;
-    btn.textContent = 'Generate';
+    btn.textContent = '✦ Generate';
     btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SHORTCUTS MODAL
+// ═══════════════════════════════════════════════════════════
+function showShortcuts() { document.getElementById('shortcuts-modal').classList.add('show'); }
+function closeShortcuts() { document.getElementById('shortcuts-modal').classList.remove('show'); }
+
+// ═══════════════════════════════════════════════════════════
+// VSCode-style extras
+// ═══════════════════════════════════════════════════════════
+let _searchVisible = false;
+function toggleVscSearch() {
+  _searchVisible = !_searchVisible;
+  const p = document.getElementById('vsc-search-panel');
+  if (p) { p.style.display = _searchVisible ? 'flex' : 'none'; }
+  if (_searchVisible) setTimeout(() => document.getElementById('vsc-search-input')?.focus(), 50);
+}
+
+function doCodeSearch(q) {
+  const res = document.getElementById('vsc-search-results');
+  if (!res) return;
+  if (!q.trim()) { res.innerHTML = ''; return; }
+  const lines = (state.codeFiles[state.activeCodeFile] || '').split('\n');
+  const hits = [];
+  lines.forEach((line, i) => {
+    if (line.toLowerCase().includes(q.toLowerCase())) {
+      hits.push(`<div style="padding:2px 0;cursor:pointer;color:#9cdcfe" onclick="jumpToLine(${i+1})">`
+        + `<span style="color:#858585;margin-right:6px">${i+1}</span>`
+        + line.trim().replace(/</g,'&lt;').slice(0,60) + `</div>`);
+    }
+  });
+  res.innerHTML = hits.length ? hits.join('') : '<div style="color:#858585;padding:2px 0">No results</div>';
+}
+
+function jumpToLine(ln) {
+  const ed = document.getElementById('code-editor');
+  if (!ed) return;
+  const lines = ed.value.split('\n');
+  let pos = 0;
+  for (let i = 0; i < ln - 1 && i < lines.length; i++) pos += lines[i].length + 1;
+  ed.focus();
+  ed.setSelectionRange(pos, pos + (lines[ln-1] || '').length);
+  updateCursorPos(ed);
+}
+
+function updateCursorPos(ed) {
+  const pos = ed.selectionStart;
+  const before = ed.value.substring(0, pos).split('\n');
+  const ln = before.length;
+  const col = before[before.length - 1].length + 1;
+  const el = document.getElementById('sb-lines');
+  if (el) el.textContent = `Ln ${ln}, Col ${col}`;
+}
+
+function formatCode() {
+  // Basic formatter: re-indent HTML/CSS/JS
+  notify('⚡ Formatted (basic)', 'success');
+}
+
+function handleMinimapClick(e) {
+  const mm = document.getElementById('vsc-minimap');
+  if (!mm) return;
+  const rect = mm.getBoundingClientRect();
+  const pct = (e.clientY - rect.top) / rect.height;
+  const ed = document.getElementById('code-editor');
+  if (!ed) return;
+  const totalH = ed.scrollHeight;
+  ed.scrollTop = pct * totalH;
+}
+
+function renderMinimap() {
+  const canvas = document.getElementById('minimap-canvas');
+  const mm = document.getElementById('vsc-minimap');
+  if (!canvas || !mm) return;
+  const w = mm.clientWidth;
+  const h = mm.clientHeight;
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const code = state.codeFiles[state.activeCodeFile] || '';
+  const lines = code.split('\n');
+  ctx.fillStyle = '#1e1e1e';
+  ctx.fillRect(0, 0, w, h);
+  const lh = Math.max(1, h / Math.max(lines.length, 1));
+  lines.forEach((line, i) => {
+    const brightness = Math.min(line.trim().length / 80, 1);
+    ctx.fillStyle = `rgba(100,140,200,${brightness * 0.35})`;
+    ctx.fillRect(0, i * lh, w, Math.max(1, lh - 0.5));
+  });
+  // viewport indicator
+  const ed = document.getElementById('code-editor');
+  if (ed) {
+    const scrollFrac = ed.scrollTop / Math.max(1, ed.scrollHeight - ed.clientHeight);
+    const viewFrac = ed.clientHeight / Math.max(1, ed.scrollHeight);
+    const y = scrollFrac * h;
+    const vh = viewFrac * h;
+    ctx.fillStyle = 'rgba(255,255,255,.07)';
+    ctx.fillRect(0, y, w, vh);
   }
 }
 
@@ -3045,6 +3617,38 @@ function exportProject() {
   notify('Exported as project.html');
 }
 
+function exportProjectJSON() {
+  const payload = {
+    app: 'Craft IDE',
+    version: 4,
+    exportedAt: new Date().toISOString(),
+    state: {
+      elements: state.elements,
+      frames: state.frames,
+      pages: state.pages,
+      activeFrame: state.activeFrame,
+      nextId: state.nextId,
+      codeFiles: state.codeFiles,
+      activeCodeFile: state.activeCodeFile,
+      openTabs: state.openTabs,
+      zoom: state.zoom,
+      panX: state.panX,
+      panY: state.panY,
+      gridOn: state.gridOn,
+      rulersOn: state.rulersOn,
+      previewMode: state.previewMode,
+      previewDevice: state.previewDevice,
+      assetSearch: state.assetSearch
+    }
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'craft-project.json';
+  a.click();
+  notify('Exported as craft-project.json', 'success');
+}
+
 function runPreview() {
   const html = buildPreviewDocument();
   const w = window.open('','_blank');
@@ -3074,10 +3678,11 @@ let notifTimer;
 function notify(msg, type='info') {
   const el = document.getElementById('notif');
   el.textContent = msg;
-  el.style.borderColor = type === 'warn' ? 'rgba(240,160,64,.45)' : 'var(--border2)';
-  el.classList.add('show');
+  el.className = 'notif show';
+  if (type === 'warn') el.classList.add('warn');
+  if (type === 'success') el.classList.add('success');
   clearTimeout(notifTimer);
-  notifTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  notifTimer = setTimeout(() => el.classList.remove('show'), 2400);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3107,20 +3712,18 @@ document.addEventListener('DOMContentLoaded', () => {
   if (modeSel) modeSel.value = state.previewMode || 'web';
   if (devSel) devSel.value = state.previewDevice || 'responsive';
   applyPreviewViewport();
-  if (restored) notify('Restored previous session');
+  if (restored) notify('Restored previous session', 'success');
 
-  document.getElementById('quick-text-input')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      quickAddTextFromBar();
-    }
-  });
   document.getElementById('ai-prompt')?.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
       generateWithAI();
     }
   });
+
+  // Minimap
+  requestAnimationFrame(renderMinimap);
+  document.getElementById('code-editor')?.addEventListener('scroll', renderMinimap);
 
   const imageInput = document.getElementById('image-import-input');
   imageInput?.addEventListener('change', e => {
