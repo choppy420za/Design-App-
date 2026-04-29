@@ -855,6 +855,10 @@ kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;bo
       <div class="preview-bar">
         <div style="display:flex;align-items:center;gap:6px;flex:1;overflow:hidden">
           <span class="preview-bar-title">Preview</span>
+          <select class="preview-select" id="preview-mode" onchange="setPreviewMode(this.value)">
+            <option value="web">Web</option>
+            <option value="app">App</option>
+          </select>
           <select class="preview-select" id="preview-device" onchange="setPreviewDevice(this.value)">
             <option value="responsive">Responsive</option>
             <option value="desktop">Desktop</option>
@@ -1061,6 +1065,36 @@ const FRAME_PRESETS = {
   mobile:  {w:390,  h:844,  name:'Mobile'},
   app:     {w:430,  h:932,  name:'App'}
 };
+const ICON_LIBRARY = {
+  home:{label:'Home',viewBox:'0 0 24 24',content:'<path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/>'},
+  search:{label:'Search',viewBox:'0 0 24 24',content:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>'},
+  menu:{label:'Menu',viewBox:'0 0 24 24',content:'<path d="M4 7h16M4 12h16M4 17h16"/>'},
+  settings:{label:'Settings',viewBox:'0 0 24 24',content:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.82-.34 1.7 1.7 0 0 0-1.05 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.05-1.56 1.7 1.7 0 0 0-1.82.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.82A1.7 1.7 0 0 0 3 13.36H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.05 1.7 1.7 0 0 0-.34-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.82.34H9A1.7 1.7 0 0 0 10.36 3.09V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.91 4H16a1.7 1.7 0 0 0 1.82-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.82V8A1.7 1.7 0 0 0 21 9.36H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15z"/>'},
+  user:{label:'User',viewBox:'0 0 24 24',content:'<circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/>'},
+  users:{label:'Users',viewBox:'0 0 24 24',content:'<path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+  bell:{label:'Bell',viewBox:'0 0 24 24',content:'<path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.17V11a6 6 0 1 0-12 0v3.17a2 2 0 0 1-.6 1.43L4 17h5"/><path d="M9.5 17a2.5 2.5 0 0 0 5 0"/>'},
+  heart:{label:'Heart',viewBox:'0 0 24 24',content:'<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>'},
+  star:{label:'Star',viewBox:'0 0 24 24',content:'<path d="M12 3l2.83 5.74L21 9.64l-4.5 4.38 1.06 6.2L12 17.27 6.44 20.22l1.06-6.2L3 9.64l6.17-.9L12 3z"/>'},
+  mail:{label:'Mail',viewBox:'0 0 24 24',content:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>'},
+  phone:{label:'Phone',viewBox:'0 0 24 24',content:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.78 19.78 0 0 1-8.63-3.07A19.5 19.5 0 0 1 3.15 10.8 19.78 19.78 0 0 1 .08 2.18 2 2 0 0 1 2.06 0h3a2 2 0 0 1 2 1.72c.12.9.33 1.79.62 2.64a2 2 0 0 1-.45 2.11L6 7.7a16 16 0 0 0 10.3 10.3l1.23-1.23a2 2 0 0 1 2.11-.45c.85.29 1.74.5 2.64.62A2 2 0 0 1 22 16.92z"/>'},
+  calendar:{label:'Calendar',viewBox:'0 0 24 24',content:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'},
+  camera:{label:'Camera',viewBox:'0 0 24 24',content:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'},
+  download:{label:'Download',viewBox:'0 0 24 24',content:'<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/>'},
+  upload:{label:'Upload',viewBox:'0 0 24 24',content:'<path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M5 3h14"/>'},
+  arrowRight:{label:'Arrow Right',viewBox:'0 0 24 24',content:'<path d="M5 12h14"/><path d="M13 5l7 7-7 7"/>'},
+  arrowLeft:{label:'Arrow Left',viewBox:'0 0 24 24',content:'<path d="M19 12H5"/><path d="M11 19l-7-7 7-7"/>'},
+  chevronDown:{label:'Chevron Down',viewBox:'0 0 24 24',content:'<path d="M6 9l6 6 6-6"/>'},
+  plus:{label:'Plus',viewBox:'0 0 24 24',content:'<path d="M12 5v14M5 12h14"/>'},
+  minus:{label:'Minus',viewBox:'0 0 24 24',content:'<path d="M5 12h14"/>'},
+  check:{label:'Check',viewBox:'0 0 24 24',content:'<path d="M20 6L9 17l-5-5"/>'},
+  close:{label:'Close',viewBox:'0 0 24 24',content:'<path d="M18 6L6 18M6 6l12 12"/>'},
+  edit:{label:'Edit',viewBox:'0 0 24 24',content:'<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>'},
+  trash:{label:'Trash',viewBox:'0 0 24 24',content:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>'},
+  lock:{label:'Lock',viewBox:'0 0 24 24',content:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'},
+  unlock:{label:'Unlock',viewBox:'0 0 24 24',content:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>'},
+  cart:{label:'Cart',viewBox:'0 0 24 24',content:'<circle cx="9" cy="20" r="1.8"/><circle cx="18" cy="20" r="1.8"/><path d="M3 4h2l2.3 11.2a2 2 0 0 0 2 1.6H18a2 2 0 0 0 2-1.5L22 7H6"/>'},
+  play:{label:'Play',viewBox:'0 0 24 24',content:'<path d="M8 5v14l11-7z"/>'}
+};
 
 // ═══════════════════════════════════════════════════════════
 // INITIAL ELEMENTS
@@ -1246,6 +1280,19 @@ function createElDOM(el) {
     div.style.background = 'transparent';
     div.style.borderRadius = '999px';
     div.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="display:block;overflow:visible"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${escapeAttr(el.stroke && el.stroke !== 'none' ? el.stroke : '#1a1a1a')}" stroke-width="${strokeW}" stroke-linecap="round"/></svg>`;
+  } else if (el.type === 'svg') {
+    div.style.background = 'transparent';
+    div.style.color = el.stroke || '#111827';
+    div.style.display = 'flex';
+    div.style.alignItems = 'stretch';
+    div.style.justifyContent = 'stretch';
+    div.innerHTML = buildSVGMarkup(el);
+    const svg = div.querySelector('svg');
+    if (svg) {
+      svg.style.display = 'block';
+      svg.style.width = '100%';
+      svg.style.height = '100%';
+    }
   } else if (el.type === 'image') {
     div.style.background = '#e8e8e8';
     div.style.borderRadius = (el.r || 0) + 'px';
@@ -1280,6 +1327,122 @@ function normalizeHexColor(hex) {
   if (!raw.startsWith('#')) return null;
   if (raw.length === 4) return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`;
   return raw.length === 7 ? raw : null;
+}
+
+function cssColorToHex(color, fallback = '#000000') {
+  if (!cssColorToHex.ctx) {
+    cssColorToHex.ctx = document.createElement('canvas').getContext('2d');
+  }
+  const raw = String(color || '').trim();
+  if (!raw || raw === 'transparent') return fallback;
+  const normalizedHex = normalizeHexColor(raw);
+  if (normalizedHex) return normalizedHex.toLowerCase();
+  try {
+    cssColorToHex.ctx.fillStyle = '#000000';
+    cssColorToHex.ctx.fillStyle = raw;
+    const resolved = cssColorToHex.ctx.fillStyle || raw;
+    const resolvedHex = normalizeHexColor(resolved);
+    if (resolvedHex) return resolvedHex.toLowerCase();
+    const match = String(resolved).match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if (match) {
+      const [, r, g, b] = match.map(Number);
+      return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (_) {
+    return fallback;
+  }
+  return fallback;
+}
+
+function isTransparentColor(color) {
+  const raw = String(color || '').trim().toLowerCase();
+  if (!raw || raw === 'transparent') return true;
+  const rgba = raw.match(/^rgba?\(([^)]+)\)$/);
+  if (!rgba) return false;
+  const parts = rgba[1].split(',').map(part => part.trim());
+  return parts.length === 4 && Number(parts[3]) === 0;
+}
+
+function getDirectTextContent(node) {
+  if (!node) return '';
+  return Array.from(node.childNodes || [])
+    .filter(child => child.nodeType === Node.TEXT_NODE)
+    .map(child => child.textContent || '')
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function slugifyClassName(name, fallback = 'layer') {
+  const base = String(name || fallback)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || fallback;
+  return /^[a-z]/.test(base) ? base : `${fallback}-${base}`;
+}
+
+function buildIconSVGMarkup(key, options = {}) {
+  const def = ICON_LIBRARY[key];
+  if (!def) return '';
+  const {
+    width = 24,
+    height = 24,
+    stroke = 'currentColor',
+    strokeWidth = 1.9,
+    fill = 'none',
+    className = '',
+    inlineStyle = ''
+  } = options;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${def.viewBox}" width="${width}" height="${height}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"${className ? ` class="${escapeAttr(className)}"` : ''}${inlineStyle ? ` style="${escapeAttr(inlineStyle)}"` : ''}>${def.content}</svg>`;
+}
+
+function normalizeSVGMarkup(markup, options = {}) {
+  const raw = String(markup || '').trim();
+  if (!raw.startsWith('<svg')) return '';
+  const {
+    className = '',
+    inlineStyle = '',
+    width = '100%',
+    height = '100%'
+  } = options;
+  const cleaned = raw
+    .replace(/\swidth="[^"]*"/i, '')
+    .replace(/\sheight="[^"]*"/i, '')
+    .replace(/\sclass="[^"]*"/i, '')
+    .replace(/\sstyle="[^"]*"/i, '')
+    .replace(/<svg([^>]*)>/i, (full, attrs) => {
+      const svgAttrs = attrs || '';
+      const hasViewBox = /viewBox=/i.test(svgAttrs);
+      const extra = [
+        ` width="${escapeAttr(String(width))}"`,
+        ` height="${escapeAttr(String(height))}"`,
+        className ? ` class="${escapeAttr(className)}"` : '',
+        inlineStyle ? ` style="${escapeAttr(inlineStyle)}"` : '',
+        hasViewBox ? '' : ' viewBox="0 0 24 24"'
+      ].join('');
+      return `<svg${svgAttrs}${extra}>`;
+    });
+  return cleaned;
+}
+
+function buildSVGMarkup(el, options = {}) {
+  if (el.iconKey) {
+    return buildIconSVGMarkup(el.iconKey, {
+      width: options.width || '100%',
+      height: options.height || '100%',
+      stroke: el.stroke || '#111827',
+      strokeWidth: el.strokeW || 1.9,
+      fill: el.fill && el.fill !== 'none' ? el.fill : 'none',
+      className: options.className || '',
+      inlineStyle: options.inlineStyle || ''
+    });
+  }
+  return normalizeSVGMarkup(el.svgMarkup || '', {
+    width: options.width || '100%',
+    height: options.height || '100%',
+    className: options.className || '',
+    inlineStyle: `${options.inlineStyle || ''}${el.stroke ? `${options.inlineStyle ? ';' : ''}color:${el.stroke};` : ''}`
+  });
 }
 
 function getLineEndpoints(el) {
@@ -1462,6 +1625,7 @@ function getStyleKeysForType(type) {
   const base = ['opacity'];
   if (type === 'text') return [...base, 'fill', 'fontSize', 'fontWeight', 'fontFamily', 'textAlign', 'lineHeight', 'letterSpacing'];
   if (type === 'line') return [...base, 'stroke', 'strokeW'];
+  if (type === 'svg') return [...base, 'stroke', 'strokeW', 'fill'];
   if (type === 'image') return [...base, 'r', 'objectFit'];
   return [...base, 'fill', 'stroke', 'strokeW', 'r'];
 }
@@ -2033,6 +2197,10 @@ function elToHTML(el) {
     const strokeW = Math.max(1, el.strokeW || 2);
     return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="position:absolute;left:${el.x}px;top:${el.y}px;overflow:visible;${opacityStyle}${effectsStyle}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${strokeW}" stroke-linecap="round"/></svg>`;
   }
+  if (el.type === 'svg') {
+    const style = `position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;overflow:visible;display:block;${opacityStyle}${effectsStyle}`;
+    return buildSVGMarkup(el, {width: el.w, height: el.h, inlineStyle: style});
+  }
   if (el.type === 'image') return `<img src="${escapeAttr(el.src||'')}" alt="${escapeAttr(el.name||'Image')}" style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;object-fit:${el.objectFit||'cover'};border-radius:${el.r||0}px;${opacityStyle}${effectsStyle}" />`;
   return '';
 }
@@ -2182,7 +2350,7 @@ function renderLayers() {
   const body = document.getElementById('left-panel-body');
   if (!body || body.dataset.tab !== 'layers') return;
 
-  const icons = {rect:'▭',ellipse:'◯',text:'T',line:'—',image:'⊟',frame:'⊡'};
+  const icons = {rect:'▭',ellipse:'◯',text:'T',line:'—',image:'⊟',svg:'◆',frame:'⊡'};
   let html = '';
   [...getElementsForCurrentPage()].reverse().forEach(el => {
     const sel = state.selected.includes(el.id);
@@ -2403,6 +2571,29 @@ function renderProps() {
     </div>`;
   }
 
+  if (el.type === 'svg') {
+    html += `
+    <div class="prop-section">
+      <div class="prop-sec-hd"><span class="prop-sec-title">${el.iconKey ? 'Icon' : 'SVG'}</span></div>
+      ${el.iconKey ? `
+      <div class="color-row">
+        <div class="color-swatch" style="background:${el.stroke||'#111827'}"><input type="color" value="${normalizeHexColor(el.stroke)||'#111827'}" oninput="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
+        <input class="color-hex" value="${el.stroke||'#111827'}" onchange="updateEl('${el.id}','stroke',this.value)"/>
+        <input class="color-opacity" value="${(el.strokeW||1.9).toFixed(1)}" onchange="updateEl('${el.id}','strokeW',Math.max(0.5,parseFloat(this.value)||1.9))" title="Stroke width" style="width:48px"/>
+      </div>
+      <div class="slider-row" style="margin-top:6px">
+        <label>Stroke</label>
+        <input type="range" min="0.5" max="4" step="0.1" value="${el.strokeW||1.9}" oninput="liveUpdateEl('${el.id}','strokeW',Math.max(0.5,+this.value));this.nextElementSibling.textContent=(+this.value).toFixed(1)" onchange="updateEl('${el.id}','strokeW',Math.max(0.5,+this.value))" style="flex:1;height:3px;accent-color:var(--accent)"/>
+        <span class="slider-val">${(el.strokeW||1.9).toFixed(1)}</span>
+      </div>
+      <div style="margin-top:6px;font-size:10px;color:var(--txt2)">Icon: ${ICON_LIBRARY[el.iconKey]?.label || el.iconKey}</div>
+      ` : `
+      <div style="font-size:10px;color:var(--txt2);line-height:1.6;margin-bottom:6px">Imported inline SVG. Resize it on canvas or replace the markup below.</div>
+      <textarea class="prop-input-wide" rows="6" style="resize:vertical;line-height:1.4;padding:6px 8px;font-family:var(--mono)" onchange="updateEl('${el.id}','svgMarkup',this.value)">${escapeHtml(el.svgMarkup||'')}</textarea>
+      `}
+    </div>`;
+  }
+
   if (el.type === 'image') {
     html += `
     <div class="prop-section">
@@ -2557,6 +2748,10 @@ function renderPagesPanel() {
     `<div style="padding:8px 6px"><button class="tbtn" onclick="addPage()" style="width:100%;font-size:11px">+ New Page</button></div>`;
 }
 
+function getIconAssetItems() {
+  return Object.entries(ICON_LIBRARY).map(([key, def]) => [def.label, key, '', 'icon']);
+}
+
 function getAssetSections() {
   return [
     {
@@ -2568,6 +2763,10 @@ function getAssetSections() {
         ['Text','text','T','shape'],
         ['Image','image','⊟','shape']
       ]
+    },
+    {
+      title: 'Icons',
+      items: getIconAssetItems()
     },
     {
       title: 'Marketing',
@@ -2649,7 +2848,7 @@ function renderAssetLibrary() {
     <div class="asset-section">
       <div class="asset-section-hd">Search Assets</div>
       <div style="padding:0 8px 8px">
-        <input class="prop-input-wide" value="${escapeAttr(state.assetSearch || '')}" oninput="updateAssetSearch(this.value)" placeholder="Search shapes, sections, screens..." />
+        <input class="prop-input-wide" value="${escapeAttr(state.assetSearch || '')}" oninput="updateAssetSearch(this.value)" placeholder="Search icons, shapes, sections, screens..." />
       </div>
     </div>
     ${sections.map(section => `
@@ -2657,7 +2856,7 @@ function renderAssetLibrary() {
         <div class="asset-section-hd">${section.title}</div>
         <div class="asset-grid">
           ${section.items.map(([label,key,icon,kind]) => `
-            <div class="asset-item" onclick="${kind === 'shape' ? "quickAdd('" + key + "')" : "addComponent('" + key + "')"}">
+            <div class="asset-item" onclick="${kind === 'shape' ? "quickAdd('" + key + "')" : kind === 'icon' ? "addIconAsset('" + key + "')" : "addComponent('" + key + "')"}">
               <div class="asset-icon" style="${kind === 'shape' ? '' : 'color:#111;background:#f3f4f6;border-radius:8px;width:28px;height:28px;margin:0 auto 4px'}">${getAssetIconSVG(key, icon)}</div>
               <div class="asset-label">${label}</div>
             </div>`).join('')}
@@ -2667,6 +2866,7 @@ function renderAssetLibrary() {
 }
 
 function getAssetIconSVG(key, fallback) {
+  if (ICON_LIBRARY[key]) return buildIconSVGMarkup(key, {width:16, height:16, stroke:'currentColor', strokeWidth:1.8, fill:'none'});
   const icons = {
     rect:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="10" rx="1.5"/></svg>`,
     ellipse:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><ellipse cx="8" cy="8" rx="5.5" ry="4.5"/></svg>`,
@@ -2755,6 +2955,17 @@ function elToCSS(el) {
       `/* line: (${x1}, ${y1}) -> (${x2}, ${y2}) */`
     ].join('\n');
   }
+  if (el.type === 'svg') {
+    return [
+      `position: absolute;`,
+      `left: ${el.x}px;`,
+      `top: ${el.y}px;`,
+      `width: ${el.w}px;`,
+      `height: ${el.h}px;`,
+      el.iconKey ? `color: ${el.stroke || '#111827'};` : `/* Inline SVG layer */`,
+      el.iconKey ? `stroke-width: ${el.strokeW || 1.9};` : `/* Edit the SVG markup directly for detailed changes */`
+    ].join('\n');
+  }
   const lines = [
     `position: absolute;`,
     `left: ${el.x}px;`,
@@ -2810,6 +3021,37 @@ function quickAdd(type) {
   state.elements.push(el);
   state.selected = [id];
   pushHistory(); render(); renderLayers(); renderProps();
+}
+
+function addIconAsset(key) {
+  const def = ICON_LIBRARY[key];
+  if (!def) return;
+  const frame = getActiveFrameRecord() || state.frames[0];
+  if (!frame) return;
+  const size = 36;
+  const id = 'el' + (++state.nextId);
+  const pos = findFreeTextPosition(frame.id, Math.round(frame.w * 0.08), Math.round(frame.h * 0.12), size, size);
+  state.elements.push({
+    id,
+    type: 'svg',
+    name: `${def.label} Icon`,
+    iconKey: key,
+    x: pos.x,
+    y: pos.y,
+    w: size,
+    h: size,
+    frameId: frame.id,
+    opacity: 1,
+    stroke: '#111827',
+    strokeW: 1.9,
+    fill: 'none'
+  });
+  state.selected = [id];
+  pushHistory();
+  render();
+  renderLayers();
+  renderProps();
+  notify(`${def.label} icon added`);
 }
 
 function quickAddTextFromBar() {
@@ -2932,6 +3174,11 @@ async function handleUploadedFiles(fileList) {
   for (const file of files) {
     const name = (file.name || '').toLowerCase();
     try {
+      if (name.endsWith('.svg') || file.type === 'image/svg+xml') {
+        await addSVGFromFile(file);
+        imported++;
+        continue;
+      }
       if (file.type.startsWith('image/')) {
         addImageFromFile(file);
         imported++;
@@ -2969,6 +3216,59 @@ async function handleUploadedFiles(fileList) {
   } else {
     notify('No supported files selected', 'warn');
   }
+}
+
+function getSVGIntrinsicSize(markup) {
+  try {
+    const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
+    const svg = doc.querySelector('svg');
+    if (!svg) return {w: 32, h: 32};
+    let w = pxNum(svg.getAttribute('width'), 0);
+    let h = pxNum(svg.getAttribute('height'), 0);
+    if ((!w || !h) && svg.getAttribute('viewBox')) {
+      const parts = svg.getAttribute('viewBox').split(/\s+/).map(Number);
+      if (parts.length === 4) {
+        w = w || parts[2];
+        h = h || parts[3];
+      }
+    }
+    return {w: Math.max(16, Math.round(w || 32)), h: Math.max(16, Math.round(h || 32))};
+  } catch (_) {
+    return {w: 32, h: 32};
+  }
+}
+
+async function addSVGFromFile(file, frameId = null, x = null, y = null) {
+  const markup = await readFileAsText(file);
+  const {w: baseW, h: baseH} = getSVGIntrinsicSize(markup);
+  const frame = state.frames.find(f => f.id === (frameId || state.activeFrame)) || getActiveFrameRecord() || state.frames[0];
+  if (!frame) return;
+  const scale = Math.min(56 / Math.max(baseW, baseH), 1.8);
+  const w = Math.max(20, Math.round(baseW * scale));
+  const h = Math.max(20, Math.round(baseH * scale));
+  const id = 'el' + (++state.nextId);
+  const px = x !== null ? x : Math.round((frame.w - w) / 2);
+  const py = y !== null ? y : Math.round((frame.h - h) / 2);
+  state.elements.push({
+    id,
+    type: 'svg',
+    name: (file.name || 'SVG').replace(/\.svg$/i, ''),
+    frameId: frame.id,
+    x: Math.max(0, px),
+    y: Math.max(0, py),
+    w,
+    h,
+    opacity: 1,
+    stroke: '#111827',
+    svgMarkup: markup
+  });
+  state.selected = [id];
+  pushHistory();
+  render();
+  renderLayers();
+  renderProps();
+  queueAutosave();
+  notify('SVG imported');
 }
 
 function addImageFromFile(file, frameId = null, x = null, y = null) {
@@ -3427,6 +3727,8 @@ function validateCode() {
     issues.push(`CSS: ${err.message}`);
   }
 
+  setCodeHealth(issues);
+
   if (issues.length) {
     notify(`Validation: ${issues[0]}`, 'warn');
   } else {
@@ -3485,6 +3787,7 @@ function loadCodeFile(file) {
   const editor = document.getElementById('code-editor');
   editor.value = state.codeFiles[file] || '';
   updateLineNums();
+  setTimeout(renderMinimap, 0);
   refreshPreview();
 }
 
@@ -3511,6 +3814,7 @@ function renderEditorTabs() {
 function onCodeInput() {
   state.codeFiles[state.activeCodeFile] = document.getElementById('code-editor').value;
   updateLineNums();
+  renderMinimap();
   queueAutosave();
   refreshPreview();
 }
@@ -3691,9 +3995,96 @@ function updateCursorPos(ed) {
   if (el) el.textContent = `Ln ${ln}, Col ${col}`;
 }
 
+function setCodeHealth(issues) {
+  const badge = document.getElementById('sb-errors');
+  if (!badge) return;
+  const count = issues.length;
+  badge.textContent = `$(${count}) !(${count})`;
+}
+
+function formatHTMLNode(node, depth = 0) {
+  const indent = '  '.repeat(depth);
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = (node.textContent || '').replace(/\s+/g, ' ').trim();
+    return text ? `${indent}${text}` : '';
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return '';
+  const tag = node.tagName.toLowerCase();
+  const attrs = Array.from(node.attributes || []).map(attr => `${attr.name}="${attr.value}"`).join(' ');
+  const open = attrs ? `<${tag} ${attrs}>` : `<${tag}>`;
+  const voidTags = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
+  if (voidTags.has(tag)) return `${indent}${open}`;
+  const children = Array.from(node.childNodes || []).map(child => formatHTMLNode(child, depth + 1)).filter(Boolean);
+  if (!children.length) return `${indent}${open}</${tag}>`;
+  if (children.length === 1 && !children[0].includes('\n')) return `${indent}${open}${children[0].trim()}</${tag}>`;
+  return `${indent}${open}\n${children.join('\n')}\n${indent}</${tag}>`;
+}
+
+function formatHTMLDocument(source) {
+  const trimmed = String(source || '').trim();
+  if (!trimmed) return '';
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(trimmed, 'text/html');
+  if (doc.querySelector('parsererror')) return trimmed;
+  if (/<html[\s>]/i.test(trimmed)) {
+    return ['<!DOCTYPE html>', formatHTMLNode(doc.documentElement, 0)].filter(Boolean).join('\n');
+  }
+  return Array.from(doc.body.childNodes).map(node => formatHTMLNode(node, 0)).filter(Boolean).join('\n');
+}
+
+function formatCSSStylesheet(source) {
+  const input = String(source || '').trim();
+  if (!input) return '';
+  let output = '';
+  let indent = 0;
+  let token = '';
+  const flush = (suffix = '') => {
+    const cleaned = token.trim();
+    if (!cleaned) { token = ''; return; }
+    output += `${'  '.repeat(indent)}${cleaned}${suffix}\n`;
+    token = '';
+  };
+  for (const char of input) {
+    if (char === '{') {
+      flush(' {');
+      indent++;
+    } else if (char === ';') {
+      flush(';');
+    } else if (char === '}') {
+      flush();
+      indent = Math.max(0, indent - 1);
+      output += `${'  '.repeat(indent)}}\n`;
+    } else {
+      token += char;
+    }
+  }
+  flush();
+  return output.trim();
+}
+
+function formatJSSource(source) {
+  const lines = String(source || '').split('\n');
+  let indent = 0;
+  return lines.map(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return '';
+    if (/^[}\])]/.test(trimmed)) indent = Math.max(0, indent - 1);
+    const formatted = `${'  '.repeat(indent)}${trimmed}`;
+    if (/[{\[]$/.test(trimmed)) indent++;
+    return formatted;
+  }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function formatCode() {
-  // Basic formatter: re-indent HTML/CSS/JS
-  notify('⚡ Formatted (basic)', 'success');
+  const editor = document.getElementById('code-editor');
+  if (!editor) return;
+  let formatted = editor.value || '';
+  if (state.activeCodeFile === 'html') formatted = formatHTMLDocument(formatted);
+  if (state.activeCodeFile === 'css') formatted = formatCSSStylesheet(formatted);
+  if (state.activeCodeFile === 'js') formatted = formatJSSource(formatted);
+  editor.value = formatted;
+  onCodeInput();
+  notify(`Formatted ${state.activeCodeFile.toUpperCase()}`, 'success');
 }
 
 function handleMinimapClick(e) {
@@ -3772,16 +4163,150 @@ function popoutPreview() {
   if (w) { w.document.write(combined); w.document.close(); }
 }
 
+function getCodeCSSDeclarationsForElement(el) {
+  const lines = [
+    `position: absolute;`,
+    `left: ${Math.round(el.x)}px;`,
+    `top: ${Math.round(el.y)}px;`,
+    `width: ${Math.round(el.w)}px;`,
+    `height: ${Math.round(el.h)}px;`
+  ];
+  if (el.type === 'rect') {
+    lines.push(`background: ${el.fill || '#d9d9d9'};`);
+    if (el.r) lines.push(`border-radius: ${el.r}px;`);
+    if (el.stroke && el.stroke !== 'none' && el.strokeW > 0) lines.push(`border: ${el.strokeW}px solid ${el.stroke};`);
+  } else if (el.type === 'ellipse') {
+    lines.push(`background: ${el.fill || '#d9d9d9'};`);
+    lines.push(`border-radius: 50%;`);
+    if (el.stroke && el.stroke !== 'none' && el.strokeW > 0) lines.push(`border: ${el.strokeW}px solid ${el.stroke};`);
+  } else if (el.type === 'text') {
+    lines.push(`margin: 0;`);
+    lines.push(`color: ${el.fill || '#111827'};`);
+    lines.push(`font-size: ${el.fontSize || 14}px;`);
+    lines.push(`font-weight: ${el.fontWeight || '400'};`);
+    lines.push(`text-align: ${el.textAlign || 'left'};`);
+    lines.push(`white-space: pre-wrap;`);
+    lines.push(`word-break: break-word;`);
+    lines.push(`line-height: ${el.lineHeight || 1.4};`);
+    if (el.fontFamily && el.fontFamily !== 'inherit') lines.push(`font-family: ${el.fontFamily};`);
+    if (el.letterSpacing) lines.push(`letter-spacing: ${el.letterSpacing}px;`);
+  } else if (el.type === 'image') {
+    lines.push(`display: block;`);
+    lines.push(`object-fit: ${el.objectFit || 'cover'};`);
+    if (el.r) lines.push(`border-radius: ${el.r}px;`);
+  } else if (el.type === 'line') {
+    lines.push(`overflow: visible;`);
+    lines.push(`display: block;`);
+  } else if (el.type === 'svg') {
+    lines.push(`display: block;`);
+    lines.push(`overflow: visible;`);
+  }
+  if (el.opacity !== undefined && el.opacity !== 1) lines.push(`opacity: ${el.opacity};`);
+  const effects = getElementEffects(el);
+  if (effects.boxShadow) lines.push(`box-shadow: ${effects.boxShadow};`);
+  if (effects.filter) lines.push(`filter: ${effects.filter};`);
+  return lines;
+}
+
+function designElementToCodeHTML(el, className) {
+  if (el.type === 'text') return `<p class="${className}">${escapeHtml(el.text || '')}</p>`;
+  if (el.type === 'rect' || el.type === 'ellipse') return `<div class="${className}"></div>`;
+  if (el.type === 'image') return `<img class="${className}" src="${escapeAttr(el.src || '')}" alt="${escapeAttr(el.name || 'Image')}" />`;
+  if (el.type === 'line') {
+    const {w, h, x1, y1, x2, y2} = getLineEndpoints(el);
+    const stroke = escapeAttr(el.stroke && el.stroke !== 'none' ? el.stroke : '#111827');
+    const strokeW = Math.max(1, el.strokeW || 2);
+    return `<svg class="${className}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${strokeW}" stroke-linecap="round"/></svg>`;
+  }
+  if (el.type === 'svg') {
+    return buildSVGMarkup(el, {className});
+  }
+  return `<div class="${className}"></div>`;
+}
+
+function buildDesignSyncBundle(frame) {
+  const frameEls = state.elements.filter(e => e.frameId === frame.id);
+  const usedClassNames = new Set();
+  const classNames = new Map();
+  frameEls.forEach((el, index) => {
+    let className = slugifyClassName(el.name || el.type, 'layer');
+    if (usedClassNames.has(className)) className = `${className}-${index + 1}`;
+    usedClassNames.add(className);
+    classNames.set(el.id, className);
+  });
+  const frameClass = slugifyClassName(frame.name || 'frame', 'frame');
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(frame.name || 'Craft Project')}</title>
+</head>
+<body>
+  <main class="craft-stage">
+    <section class="${frameClass}">
+${frameEls.map(el => `      ${designElementToCodeHTML(el, classNames.get(el.id))}`).join('\n')}
+    </section>
+  </main>
+</body>
+</html>`;
+  const css = `*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: #111827;
+  font-family: Inter, system-ui, sans-serif;
+  color: #111827;
+}
+
+.craft-stage {
+  min-height: 100vh;
+  display: grid;
+  place-items: start center;
+  padding: 32px;
+}
+
+.${frameClass} {
+  position: relative;
+  width: ${Math.round(frame.w)}px;
+  height: ${Math.round(frame.h)}px;
+  overflow: hidden;
+  background: ${frame.bg || '#ffffff'};
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18);
+}
+
+${frameEls.map(el => `.${classNames.get(el.id)} {\n  ${getCodeCSSDeclarationsForElement(el).join('\n  ')}\n}`).join('\n\n')}
+`;
+  const js = `window.CRAFT_LAYERS = ${JSON.stringify(frameEls.map(el => ({
+    id: el.id,
+    name: el.name || el.type,
+    type: el.type,
+    className: classNames.get(el.id)
+  })), null, 2)};
+
+console.info('Craft IDE synced ${frameEls.length} layer(s) into HTML/CSS/JS.');`;
+  return {html, css, js};
+}
+
 function syncDesignToCode() {
-  // Generate HTML from canvas elements
   const frame = getActiveFrameRecord() || state.frames[0];
   if (!frame) return;
-  const frameEls = state.elements.filter(e => e.frameId === frame.id);
-  const body = frameEls.map(el => '  ' + elToHTML(el)).join('\n');
-  state.codeFiles.html = `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <title>My Project</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n${body}\n  <script src="script.js"><\/script>\n</body>\n</html>`;
+  const bundle = buildDesignSyncBundle(frame);
+  state.codeFiles.html = bundle.html;
+  state.codeFiles.css = bundle.css;
+  state.codeFiles.js = bundle.js;
   loadCodeFile(state.activeCodeFile);
   queueAutosave();
-  notify('Design synced to HTML');
+  notify('Design synced to HTML, CSS, and JS');
 }
 
 function parseStyleMap(styleText) {
@@ -3827,111 +4352,199 @@ function nextElementId() {
   return 'el' + (++state.nextId);
 }
 
-function syncCodeToDesign() {
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(state.codeFiles.html || '', 'text/html');
-    const parseErr = doc.querySelector('parsererror');
-    if (parseErr) {
-      notify('Cannot sync: HTML parsing failed');
+function readRenderedBorder(style) {
+  const width = Math.max(
+    pxNum(style.borderTopWidth, 0),
+    pxNum(style.borderRightWidth, 0),
+    pxNum(style.borderBottomWidth, 0),
+    pxNum(style.borderLeftWidth, 0)
+  );
+  if (width <= 0 || isTransparentColor(style.borderColor)) {
+    return {width: 0, color: 'none'};
+  }
+  return {width: Math.round(width), color: cssColorToHex(style.borderColor, '#000000')};
+}
+
+function inferNodeName(node, tag, suffix = '') {
+  const raw = node.getAttribute?.('data-name')
+    || node.getAttribute?.('aria-label')
+    || node.id
+    || (typeof node.className === 'string' ? node.className.split(/\s+/).filter(Boolean)[0] : '')
+    || tag;
+  const cleaned = String(raw || tag)
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const base = cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : tag.toUpperCase();
+  return suffix ? `${base} ${suffix}` : base;
+}
+
+function createPreviewSyncFrame() {
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;left:-12000px;top:-12000px;width:1600px;height:1200px;opacity:0;pointer-events:none;border:0;z-index:-1';
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      setTimeout(() => resolve(iframe), 120);
+    };
+    iframe.onload = finish;
+    iframe.onerror = () => {
+      if (settled) return;
+      settled = true;
+      reject(new Error('Preview sandbox failed to load'));
+    };
+    document.body.appendChild(iframe);
+    iframe.srcdoc = buildPreviewDocument();
+    setTimeout(finish, 700);
+  });
+}
+
+function extractElementsFromRenderedPreview(doc, win, frame) {
+  const body = doc.body;
+  if (!body) return [];
+  const bodyRect = body.getBoundingClientRect();
+  const nodes = Array.from(body.querySelectorAll('*'));
+  const supported = [];
+
+  nodes.forEach(node => {
+    if (!node.tagName) return;
+    const tag = node.tagName.toLowerCase();
+    if (['script', 'style', 'meta', 'link', 'head', 'html', 'body'].includes(tag)) return;
+    const style = win.getComputedStyle(node);
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return;
+
+    const rect = node.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) return;
+
+    const x = Math.round(rect.left - bodyRect.left);
+    const y = Math.round(rect.top - bodyRect.top);
+    const w = Math.max(2, Math.round(rect.width));
+    const h = Math.max(2, Math.round(rect.height));
+    const opacity = Number.isFinite(parseFloat(style.opacity)) ? Math.max(0, Math.min(1, parseFloat(style.opacity))) : 1;
+    const border = readRenderedBorder(style);
+    const radius = Math.max(0, Math.round(pxNum(style.borderRadius, 0)));
+    const bgColor = style.backgroundColor;
+    const hasVisibleBg = !isTransparentColor(bgColor);
+    const directText = getDirectTextContent(node);
+    const padL = pxNum(style.paddingLeft, 0);
+    const padR = pxNum(style.paddingRight, 0);
+    const padT = pxNum(style.paddingTop, 0);
+    const padB = pxNum(style.paddingBottom, 0);
+
+    if (tag === 'img') {
+      supported.push({
+        id: nextElementId(),
+        frameId: frame.id,
+        type: 'image',
+        name: inferNodeName(node, tag, 'Image'),
+        x, y, w, h, opacity,
+        r: radius,
+        src: node.getAttribute('src') || '',
+        objectFit: style.objectFit || 'cover'
+      });
       return;
     }
 
-    const frame = state.frames.find(f => f.id === state.activeFrame) || state.frames[0];
-    const supported = [];
-    const nodes = doc.body ? Array.from(doc.body.querySelectorAll('*')) : [];
-    nodes.forEach(node => {
-      if (!node.tagName) return;
-      const tag = node.tagName.toLowerCase();
-      if (['script', 'style', 'meta', 'link'].includes(tag)) return;
-      const style = parseStyleMap(node.getAttribute('style') || '');
-      if (style.position !== 'absolute') return;
-      const border = parseBorderDetails(style);
-
-      const base = {
-        id: nextElementId(),
-        frameId: frame.id,
-        x: Math.round(pxNum(style.left, 0)),
-        y: Math.round(pxNum(style.top, 0)),
-        w: Math.max(2, Math.round(pxNum(style.width || node.getAttribute('width'), tag.startsWith('h') ? 360 : tag === 'svg' ? 200 : 200))),
-        h: Math.max(2, Math.round(pxNum(style.height || node.getAttribute('height'), tag.startsWith('h') ? 60 : tag === 'svg' ? 40 : 40))),
-        name: tag.toUpperCase(),
-        opacity: style.opacity ? Math.max(0, Math.min(1, parseFloat(style.opacity))) : 1
-      };
-
-      const borderRadius = style['border-radius'] || '';
-      const isTextTag = ['p', 'span', 'a', 'button', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag);
-
-      if (tag === 'svg') {
-        const line = node.querySelector('line');
-        if (!line) return;
+    if (tag === 'svg') {
+      const directLine = node.children.length === 1 && node.firstElementChild?.tagName?.toLowerCase() === 'line';
+      if (directLine) {
+        const line = node.firstElementChild;
         const x1 = pxNum(line.getAttribute('x1'), 0);
-        const y1 = pxNum(line.getAttribute('y1'), 0);
-        const x2 = pxNum(line.getAttribute('x2'), base.w);
-        const y2 = pxNum(line.getAttribute('y2'), base.h);
+        const y1 = pxNum(line.getAttribute('y1'), h / 2);
+        const x2 = pxNum(line.getAttribute('x2'), w);
+        const y2 = pxNum(line.getAttribute('y2'), h / 2);
         supported.push({
-          ...base,
+          id: nextElementId(),
+          frameId: frame.id,
           type: 'line',
-          name: 'Line',
-          stroke: line.getAttribute('stroke') || border.color || '#1a1a1a',
-          strokeW: Math.max(1, pxNum(line.getAttribute('stroke-width'), border.width || 2)),
+          name: inferNodeName(node, tag, 'Line'),
+          x, y, w, h, opacity,
+          stroke: cssColorToHex(line.getAttribute('stroke') || style.color || '#111827', '#111827'),
+          strokeW: Math.max(1, pxNum(line.getAttribute('stroke-width'), 2)),
           lineFlipX: x2 >= x1 ? 1 : -1,
           lineFlipY: y2 >= y1 ? 1 : -1
         });
-        return;
-      }
-
-      if (tag === 'img') {
-        supported.push({
-          ...base,
-          type: 'image',
-          name: 'Image',
-          r: Math.max(0, Math.round(pxNum(borderRadius, 0))),
-          src: node.getAttribute('src') || '',
-          objectFit: style['object-fit'] || 'cover'
-        });
-        return;
-      }
-
-      if (isTextTag) {
-        supported.push({
-          ...base,
-          type: 'text',
-          name: 'Text',
-          text: (node.textContent || '').trim() || 'Text',
-          fill: style.color || '#1a1a1a',
-          fontSize: Math.max(8, Math.round(pxNum(style['font-size'], tag === 'h1' ? 36 : 16))),
-          fontWeight: style['font-weight'] || '400',
-          textAlign: style['text-align'] || 'left'
-        });
-        return;
-      }
-
-      const bg = style.background || style['background-color'] || '#d9d9d9';
-      if (borderRadius.includes('%') && borderRadius.includes('50')) {
-        supported.push({
-          ...base,
-          type: 'ellipse',
-          name: 'Ellipse',
-          fill: bg,
-          stroke: border.color,
-          strokeW: border.width
-        });
       } else {
         supported.push({
-          ...base,
-          type: 'rect',
-          name: 'Rectangle',
-          fill: bg,
-          stroke: border.color,
-          strokeW: border.width,
-          r: Math.max(0, Math.round(pxNum(borderRadius, 0)))
+          id: nextElementId(),
+          frameId: frame.id,
+          type: 'svg',
+          name: inferNodeName(node, tag, 'Icon'),
+          x, y, w, h, opacity,
+          stroke: cssColorToHex(style.color || '#111827', '#111827'),
+          svgMarkup: node.outerHTML
         });
       }
-    });
+      return;
+    }
 
+    const shouldCreateShape = hasVisibleBg || border.width > 0 || ['button', 'input', 'textarea', 'select'].includes(tag);
+    if (shouldCreateShape) {
+      const isEllipse = style.borderRadius.includes('%') && style.borderRadius.includes('50');
+      supported.push({
+        id: nextElementId(),
+        frameId: frame.id,
+        type: isEllipse ? 'ellipse' : 'rect',
+        name: inferNodeName(node, tag, isEllipse ? 'Ellipse' : 'Box'),
+        x, y, w, h, opacity,
+        fill: hasVisibleBg ? cssColorToHex(bgColor, '#ffffff') : '#ffffff',
+        stroke: border.color,
+        strokeW: border.width,
+        r: isEllipse ? 0 : radius
+      });
+    }
+
+    if (directText) {
+      const textW = Math.max(16, Math.round(w - padL - padR));
+      const textH = Math.max(16, Math.round(h - padT - padB));
+      supported.push({
+        id: nextElementId(),
+        frameId: frame.id,
+        type: 'text',
+        name: inferNodeName(node, tag, 'Text'),
+        text: directText,
+        x: Math.round(x + padL),
+        y: Math.round(y + padT),
+        w: textW,
+        h: textH,
+        opacity,
+        fill: cssColorToHex(style.color || '#111827', '#111827'),
+        fontSize: Math.max(8, Math.round(pxNum(style.fontSize, 16))),
+        fontWeight: style.fontWeight || '400',
+        fontFamily: style.fontFamily || 'inherit',
+        textAlign: style.textAlign || 'left',
+        lineHeight: style.lineHeight === 'normal' ? 1.4 : Math.max(1, parseFloat(style.lineHeight) / Math.max(1, pxNum(style.fontSize, 16))),
+        letterSpacing: Math.round(pxNum(style.letterSpacing, 0) * 100) / 100
+      });
+    }
+  });
+
+  return supported;
+}
+
+async function syncCodeToDesign() {
+  let iframe = null;
+  try {
+    const frame = state.frames.find(f => f.id === state.activeFrame) || state.frames[0];
+    if (!frame) return;
+    notify('Syncing rendered code…');
+    iframe = await createPreviewSyncFrame();
+    const win = iframe.contentWindow;
+    const doc = iframe.contentDocument;
+    if (!win || !doc || !doc.body) throw new Error('Preview sandbox unavailable');
+
+    const bodyStyle = win.getComputedStyle(doc.body);
+    if (!isTransparentColor(bodyStyle.backgroundColor)) {
+      frame.bg = cssColorToHex(bodyStyle.backgroundColor, frame.bg || '#ffffff');
+    }
+    frame.w = Math.max(frame.w, Math.ceil(doc.documentElement.scrollWidth || doc.body.scrollWidth || frame.w));
+    frame.h = Math.max(frame.h, Math.ceil(doc.documentElement.scrollHeight || doc.body.scrollHeight || frame.h));
+
+    const supported = extractElementsFromRenderedPreview(doc, win, frame);
     if (!supported.length) {
-      notify('No absolute positioned elements found to sync');
+      notify('No visible layers found in rendered code', 'warn');
       return;
     }
 
@@ -3942,9 +4555,11 @@ function syncCodeToDesign() {
     render();
     renderLayers();
     renderProps();
-    notify(`Code synced to design (${supported.length} elements)`);
-  } catch (_) {
-    notify('Code to design sync failed');
+    notify(`Code synced to design (${supported.length} layers)`);
+  } catch (err) {
+    notify('Code to design sync failed', 'warn');
+  } finally {
+    iframe?.remove();
   }
 }
 
@@ -4154,6 +4769,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load initial code
   loadCodeFile(state.activeCodeFile);
   renderEditorTabs();
+  validateCode();
   const modeSel = document.getElementById('preview-mode');
   const devSel = document.getElementById('preview-device');
   if (modeSel) modeSel.value = state.previewMode || 'web';
@@ -4175,7 +4791,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const imageInput = document.getElementById('image-import-input');
   imageInput?.addEventListener('change', e => {
     const file = e.target.files?.[0];
-    if (file) addImageFromFile(file);
+    if (file?.type === 'image/svg+xml' || /\.svg$/i.test(file?.name || '')) addSVGFromFile(file);
+    else if (file) addImageFromFile(file);
     e.target.value = '';
   });
   const fileInput = document.getElementById('file-upload-input');
@@ -4192,8 +4809,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const files = e.dataTransfer?.files;
     if (!files || files.length === 0) return;
     e.preventDefault();
-    const images = Array.from(files).filter(f => f.type.startsWith('image/'));
-    const nonImages = Array.from(files).filter(f => !f.type.startsWith('image/'));
+    const vectorFiles = Array.from(files).filter(f => f.type === 'image/svg+xml' || /\.svg$/i.test(f.name || ''));
+    const images = Array.from(files).filter(f => f.type.startsWith('image/') && f.type !== 'image/svg+xml' && !/\.svg$/i.test(f.name || ''));
+    const nonImages = Array.from(files).filter(f => !f.type.startsWith('image/') && !/\.svg$/i.test(f.name || ''));
+    if (vectorFiles.length) {
+      for (const file of vectorFiles) await addSVGFromFile(file);
+    }
     if (images.length) {
       const rect = wrap.getBoundingClientRect();
       const cx = e.clientX - rect.left;
