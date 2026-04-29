@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Craft IDE</title>
+<title>Craft IDE · Real-time Design + Code</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -47,6 +47,21 @@ select option{background:var(--bg2)}
 .titlebar-logo{
   width:var(--sidebar-w);display:flex;align-items:center;gap:8px;
   padding:0 14px;height:100%;flex-shrink:0;
+}
+.titlebar-meta{
+  display:flex;align-items:center;gap:6px;min-width:0;flex:0 1 340px;
+  max-width:340px;padding-right:12px;overflow:hidden;
+}
+.meta-pill{
+  display:inline-flex;align-items:center;gap:6px;min-width:0;
+  padding:5px 10px;border-radius:999px;
+  border:1px solid var(--border2);background:var(--bg2);
+  color:var(--txt1);font-size:10px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;
+}
+.meta-pill b{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--txt0);font-weight:600;text-transform:none;letter-spacing:0;
 }
 .logo-mark{
   width:24px;height:24px;border-radius:6px;background:var(--accent);
@@ -159,6 +174,16 @@ select option{background:var(--bg2)}
 }
 .layer-item:hover{background:var(--bg2)}
 .layer-item.selected{background:rgba(24,160,251,.15);color:var(--txt0)}
+.layer-item-actions{
+  display:flex;align-items:center;gap:2px;opacity:0;transition:opacity .1s;
+}
+.layer-item:hover .layer-item-actions{opacity:1}
+.layer-action-btn{
+  width:18px;height:18px;display:flex;align-items:center;justify-content:center;
+  border-radius:4px;font-size:10px;color:var(--txt2);border:1px solid transparent;
+}
+.layer-action-btn:hover{background:var(--bg3);color:var(--txt0);border-color:var(--border2)}
+.layer-action-btn.danger:hover{color:var(--red)}
 .layer-item.drag-over{border-top:2px solid var(--accent)}
 .layer-icon{width:14px;height:14px;flex-shrink:0;opacity:.5;display:flex;align-items:center;justify-content:center}
 .layer-icon svg{width:12px;height:12px}
@@ -596,6 +621,11 @@ kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;bo
     </div>
     <span class="logo-text">Craft IDE</span>
   </div>
+  <div class="titlebar-meta" id="titlebar-meta">
+    <div class="meta-pill">Page <b id="meta-page-name">Page 1</b></div>
+    <div class="meta-pill">Frame <b id="meta-frame-name">Desktop 1440</b></div>
+    <div class="meta-pill">Selection <b id="meta-selection-count">0 layers</b></div>
+  </div>
   <div class="titlebar-center">
     <button class="title-tab active" id="tab-design" onclick="switchMainTab('design')">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
@@ -609,8 +639,8 @@ kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;bo
   <div class="titlebar-right">
     <button class="tbtn" onclick="showShortcuts()" title="Keyboard Shortcuts">⌨</button>
     <button class="tbtn" onclick="exportProjectJSON()">Export JSON</button>
-    <button class="tbtn" onclick="exportProject()">Export</button>
-    <button class="tbtn tbtn-accent" onclick="runPreview()">▶ Preview</button>
+    <button class="tbtn" onclick="exportProject()">Export HTML</button>
+    <button class="tbtn tbtn-accent" onclick="runPreview()">▶ Run</button>
   </div>
 </div>
 
@@ -1066,6 +1096,17 @@ function getElementsForCurrentPage() {
   return state.elements.filter(el => frameIds.has(el.frameId));
 }
 
+function updateWorkbenchMeta() {
+  const page = state.pages.find(p => p.active) || state.pages[0];
+  const frame = getActiveFrameRecord();
+  const pageEl = document.getElementById('meta-page-name');
+  const frameEl = document.getElementById('meta-frame-name');
+  const selectionEl = document.getElementById('meta-selection-count');
+  if (pageEl) pageEl.textContent = page?.name || 'No page';
+  if (frameEl) frameEl.textContent = frame?.name || 'No frame';
+  if (selectionEl) selectionEl.textContent = `${state.selected.length} ${state.selected.length === 1 ? 'layer' : 'layers'}`;
+}
+
 // ═══════════════════════════════════════════════════════════
 function render() {
   const inner = document.getElementById('canvas-inner');
@@ -1099,6 +1140,7 @@ function render() {
   updateSelectionOverlay();
   renderLayers();
   updateZoomDisplay();
+  updateWorkbenchMeta();
 }
 
 function queueAutosave() {
@@ -1198,9 +1240,12 @@ function createElDOM(el) {
     div.textContent = el.text || '';
   } else if (el.type === 'line') {
     const strokeW = Math.max(1, el.strokeW || 2);
-    div.style.height = strokeW + 'px';
-    div.style.background = el.stroke && el.stroke !== 'none' ? el.stroke : 'transparent';
+    const {w, h, x1, y1, x2, y2} = getLineEndpoints(el);
+    div.style.width = w + 'px';
+    div.style.height = h + 'px';
+    div.style.background = 'transparent';
     div.style.borderRadius = '999px';
+    div.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="display:block;overflow:visible"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${escapeAttr(el.stroke && el.stroke !== 'none' ? el.stroke : '#1a1a1a')}" stroke-width="${strokeW}" stroke-linecap="round"/></svg>`;
   } else if (el.type === 'image') {
     div.style.background = '#e8e8e8';
     div.style.borderRadius = (el.r || 0) + 'px';
@@ -1235,6 +1280,46 @@ function normalizeHexColor(hex) {
   if (!raw.startsWith('#')) return null;
   if (raw.length === 4) return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`;
   return raw.length === 7 ? raw : null;
+}
+
+function getLineEndpoints(el) {
+  const w = Math.max(1, Math.round(el.w || 1));
+  const h = Math.max(1, Math.round(el.h || Math.max(1, el.strokeW || 2)));
+  const strokeW = Math.max(1, el.strokeW || 2);
+  if (el.lineFlipX !== undefined || el.lineFlipY !== undefined) {
+    const flipX = el.lineFlipX === -1 ? -1 : 1;
+    const flipY = el.lineFlipY === -1 ? -1 : 1;
+    return {
+      w,
+      h,
+      x1: flipX === -1 ? w : 0,
+      y1: flipY === -1 ? h : 0,
+      x2: flipX === -1 ? 0 : w,
+      y2: flipY === -1 ? 0 : h
+    };
+  }
+  if (w <= strokeW * 1.5) {
+    return {w, h, x1: w / 2, y1: 0, x2: w / 2, y2: h};
+  }
+  if (h <= strokeW * 1.5) {
+    return {w, h, x1: 0, y1: h / 2, x2: w, y2: h / 2};
+  }
+  const flipX = el.lineFlipX === -1 ? -1 : 1;
+  const flipY = el.lineFlipY === -1 ? -1 : 1;
+  return {
+    w,
+    h,
+    x1: flipX === -1 ? w : 0,
+    y1: flipY === -1 ? h : 0,
+    x2: flipX === -1 ? 0 : w,
+    y2: flipY === -1 ? 0 : h
+  };
+}
+
+function getStrokeStyle(el) {
+  return el.stroke && el.stroke !== 'none' && el.strokeW > 0
+    ? `border:${el.strokeW}px solid ${el.stroke};box-sizing:border-box;`
+    : '';
 }
 
 function colorToRgba(color, alpha = 1) {
@@ -1684,15 +1769,19 @@ function canvasMouseUp(e) {
         Object.assign(newEl, {type:'text', name:'Text', text:'Type something', fill:'#1a1a1a', fontSize:16, fontWeight:'400', textAlign:'left'});
       } else if (t === 'L') {
         const tinyDrag = Math.abs(egx - sgx) < 2 && Math.abs(egy - sgy) < 2;
+        const lineW = tinyDrag ? 140 : Math.max(Math.abs(ex - sx), 2);
+        const lineH = tinyDrag ? 2 : Math.max(Math.abs(ey - sy), 2);
         Object.assign(newEl, {
           type:'line',
           name:'Line',
           x: Math.round(Math.min(sx, ex)),
-          y: Math.round(sy),
+          y: Math.round(Math.min(sy, ey)),
           stroke:'#1a1a1a',
           strokeW:2,
-          h:2,
-          w: tinyDrag ? 140 : Math.max(Math.abs(ex - sx), 20)
+          h: Math.round(lineH),
+          w: Math.round(lineW),
+          lineFlipX: tinyDrag ? 1 : (ex >= sx ? 1 : -1),
+          lineFlipY: tinyDrag ? 1 : (ey >= sy ? 1 : -1)
         });
       } else if (t === 'I') {
         Object.assign(newEl, {type:'image', name:'Image', r:0});
@@ -1936,8 +2025,14 @@ function elToHTML(el) {
     ].join('');
     return `<p style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;font-size:${el.fontSize}px;font-weight:${el.fontWeight};color:${el.fill};text-align:${el.textAlign};white-space:pre-wrap;word-break:break-word;${textExtras}${opacityStyle}${effectsStyle}">${escapeHtml(el.text||'')}</p>`;
   }
-  if (el.type === 'rect') return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;background:${el.fill};border-radius:${el.r||0}px;${opacityStyle}${effectsStyle}"></div>`;
-  if (el.type === 'ellipse') return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;background:${el.fill};border-radius:50%;${opacityStyle}${effectsStyle}"></div>`;
+  if (el.type === 'rect') return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;background:${el.fill};border-radius:${el.r||0}px;${getStrokeStyle(el)}${opacityStyle}${effectsStyle}"></div>`;
+  if (el.type === 'ellipse') return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;background:${el.fill};border-radius:50%;${getStrokeStyle(el)}${opacityStyle}${effectsStyle}"></div>`;
+  if (el.type === 'line') {
+    const {w, h, x1, y1, x2, y2} = getLineEndpoints(el);
+    const stroke = escapeAttr(el.stroke && el.stroke !== 'none' ? el.stroke : '#1a1a1a');
+    const strokeW = Math.max(1, el.strokeW || 2);
+    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="position:absolute;left:${el.x}px;top:${el.y}px;overflow:visible;${opacityStyle}${effectsStyle}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${strokeW}" stroke-linecap="round"/></svg>`;
+  }
   if (el.type === 'image') return `<img src="${escapeAttr(el.src||'')}" alt="${escapeAttr(el.name||'Image')}" style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;object-fit:${el.objectFit||'cover'};border-radius:${el.r||0}px;${opacityStyle}${effectsStyle}" />`;
   return '';
 }
@@ -2159,6 +2254,7 @@ function renderProps() {
   }
   const el = state.elements.find(e => e.id === state.selected[0]);
   if (!el) return;
+  const minTransformSize = el.type === 'line' ? 1 : 10;
 
   let html = `
   <div class="prop-section">
@@ -2197,13 +2293,13 @@ function renderProps() {
     </div>
     <div class="slider-row">
       <label>W</label>
-      <input type="range" min="10" max="${Math.max(2000, Math.round(el.w + 800))}" step="1" value="${Math.round(el.w)}"
+      <input type="range" min="${minTransformSize}" max="${Math.max(2000, Math.round(el.w + 800))}" step="1" value="${Math.round(el.w)}"
         oninput="liveUpdateEl('${el.id}','w',+this.value);this.nextSibling.textContent=this.value" onchange="updateEl('${el.id}','w',+this.value)" style="flex:1;height:3px;accent-color:var(--accent)"/>
       <span class="slider-val">${Math.round(el.w)}</span>
     </div>
     <div class="slider-row">
       <label>H</label>
-      <input type="range" min="10" max="${Math.max(2000, Math.round(el.h + 800))}" step="1" value="${Math.round(el.h)}"
+      <input type="range" min="${minTransformSize}" max="${Math.max(2000, Math.round(el.h + 800))}" step="1" value="${Math.round(el.h)}"
         oninput="liveUpdateEl('${el.id}','h',+this.value);this.nextSibling.textContent=this.value" onchange="updateEl('${el.id}','h',+this.value)" style="flex:1;height:3px;accent-color:var(--accent)"/>
       <span class="slider-val">${Math.round(el.h)}</span>
     </div>
@@ -2214,7 +2310,7 @@ function renderProps() {
     <div class="prop-section">
       <div class="prop-sec-hd"><span class="prop-sec-title">Fill</span><span class="prop-add-btn" title="Add fill">+</span></div>
       <div class="color-row">
-        <div class="color-swatch" style="background:${el.fill||'#e0e0e0'}"><input type="color" value="${normalizeHexColor(el.fill)||'#e0e0e0'}" onchange="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
+        <div class="color-swatch" style="background:${el.fill||'#e0e0e0'}"><input type="color" value="${normalizeHexColor(el.fill)||'#e0e0e0'}" oninput="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
         <input class="color-hex" value="${el.fill||'#e0e0e0'}" onchange="updateEl('${el.id}','fill',this.value)"/>
         <input class="color-opacity" value="100%" readonly title="Fill opacity"/>
       </div>
@@ -2222,7 +2318,7 @@ function renderProps() {
     <div class="prop-section">
       <div class="prop-sec-hd"><span class="prop-sec-title">Stroke</span><span class="prop-add-btn" title="Add stroke">+</span></div>
       <div class="color-row">
-        <div class="color-swatch" style="background:${el.stroke&&el.stroke!=='none'?el.stroke:'#cccccc'}"><input type="color" value="${normalizeHexColor(el.stroke&&el.stroke!=='none'?el.stroke:'#000000')||'#000000'}" onchange="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
+        <div class="color-swatch" style="background:${el.stroke&&el.stroke!=='none'?el.stroke:'#cccccc'}"><input type="color" value="${normalizeHexColor(el.stroke&&el.stroke!=='none'?el.stroke:'#000000')||'#000000'}" oninput="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
         <input class="color-hex" value="${el.stroke&&el.stroke!=='none'?el.stroke:'#000000'}" onchange="updateEl('${el.id}','stroke',this.value)"/>
         <input class="color-opacity" value="${el.strokeW||0}" onchange="updateEl('${el.id}','strokeW',Math.max(0,parseInt(this.value)||0))" title="Stroke width (px)" style="width:40px"/>
       </div>
@@ -2270,7 +2366,7 @@ function renderProps() {
         <div class="prop-field"><div class="prop-field-label">Letter</div><input class="prop-input" value="${el.letterSpacing||0}" onchange="updateEl('${el.id}','letterSpacing',+this.value)"/></div>
       </div>
       <div class="color-row" style="margin-bottom:6px">
-            <div class="color-swatch" style="background:${el.fill||'#1a1a1a'}"><input type="color" value="${normalizeHexColor(el.fill)||'#1a1a1a'}" onchange="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
+            <div class="color-swatch" style="background:${el.fill||'#1a1a1a'}"><input type="color" value="${normalizeHexColor(el.fill)||'#1a1a1a'}" oninput="updateEl('${el.id}','fill',this.value);this.parentElement.style.background=this.value"/></div>
         <input class="color-hex" value="${el.fill||'#1a1a1a'}" onchange="updateEl('${el.id}','fill',this.value)"/>
       </div>
       <div class="align-row">
@@ -2295,7 +2391,7 @@ function renderProps() {
     <div class="prop-section">
       <div class="prop-sec-hd"><span class="prop-sec-title">Stroke</span></div>
       <div class="color-row">
-        <div class="color-swatch" style="background:${el.stroke||'#1a1a1a'}"><input type="color" value="${normalizeHexColor(el.stroke)||'#1a1a1a'}" onchange="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
+        <div class="color-swatch" style="background:${el.stroke||'#1a1a1a'}"><input type="color" value="${normalizeHexColor(el.stroke)||'#1a1a1a'}" oninput="updateEl('${el.id}','stroke',this.value);this.parentElement.style.background=this.value"/></div>
         <input class="color-hex" value="${el.stroke||'#1a1a1a'}" onchange="updateEl('${el.id}','stroke',this.value)"/>
         <input class="color-opacity" value="${el.strokeW||2}" onchange="updateEl('${el.id}','strokeW',Math.max(1,parseInt(this.value)||2))" title="Width" style="width:40px"/>
       </div>
@@ -2319,6 +2415,11 @@ function renderProps() {
           </select>
         </div>
         <div class="prop-field"><div class="prop-field-label">Radius</div><input class="prop-input" value="${el.r||0}" onchange="updateEl('${el.id}','r',+this.value)"/></div>
+      </div>
+      <div class="slider-row" style="margin-bottom:6px">
+        <label>Radius</label>
+        <input type="range" min="0" max="${Math.max(120, Math.round(Math.min(el.w, el.h) / 2))}" step="1" value="${el.r||0}" oninput="liveUpdateEl('${el.id}','r',+this.value);this.nextElementSibling.textContent=this.value+'px'" onchange="updateEl('${el.id}','r',+this.value)" style="flex:1;height:3px;accent-color:var(--accent)"/>
+        <span class="slider-val">${el.r||0}px</span>
       </div>
       <input type="file" accept="image/*" class="prop-input-wide" style="padding:4px;font-size:10px" onchange="replaceImageForSelected(this.files[0]);this.value=''"/>
     </div>`;
@@ -2385,9 +2486,13 @@ function updateEl(id, prop, value, options = {}) {
   if (el.type === 'text' && ['text','fontSize','fontWeight','fontFamily','lineHeight','letterSpacing'].includes(prop)) {
     el.h = measureTextHeight(el);
   }
-  if (el.type === 'line' && prop === 'strokeW') el.h = Math.max(1, el.strokeW || 2);
-  if (prop === 'w') el.w = Math.max(10, el.w);
-  if (prop === 'h') el.h = Math.max(10, el.h);
+  if (el.type === 'line' && prop === 'strokeW') {
+    const minStroke = Math.max(1, el.strokeW || 2);
+    el.h = Math.max(el.h || 0, minStroke);
+    el.w = Math.max(el.w || 0, minStroke);
+  }
+  if (prop === 'w') el.w = Math.max(el.type === 'line' ? 1 : 10, el.w);
+  if (prop === 'h') el.h = Math.max(el.type === 'line' ? 1 : 10, el.h);
   if (prop === 'r') el.r = Math.max(0, el.r);
   if (options.live) {
     render();
@@ -2432,13 +2537,24 @@ function switchLeftTab(tab, el) {
   } else if (tab === 'assets') {
     renderAssetLibrary();
   } else if (tab === 'pages') {
-    body.innerHTML = state.pages.map(p=>`
-      <div class="layer-item ${p.active?'selected':''}" onclick="switchPage('${p.id}')">
-        <span style="font-size:11px">📄</span>
-        <span class="layer-name">${p.name}</span>
-      </div>`).join('') +
-      `<div style="padding:8px 6px"><button class="tbtn" onclick="addPage()" style="width:100%;font-size:11px">+ New Page</button></div>`;
+    renderPagesPanel();
   }
+}
+
+function renderPagesPanel() {
+  const body = document.getElementById('left-panel-body');
+  if (!body) return;
+  body.innerHTML = state.pages.map(p=>`
+    <div class="layer-item ${p.active?'selected':''}" onclick="switchPage('${p.id}')">
+      <span style="font-size:11px">📄</span>
+      <span class="layer-name">${p.name}</span>
+      <span class="layer-item-actions">
+        <button class="layer-action-btn" title="Rename page" onclick="event.stopPropagation();renamePage('${p.id}')">✎</button>
+        <button class="layer-action-btn" title="Duplicate page" onclick="event.stopPropagation();duplicatePage('${p.id}')">⧉</button>
+        <button class="layer-action-btn danger" title="Delete page" onclick="event.stopPropagation();deletePage('${p.id}')">⌫</button>
+      </span>
+    </div>`).join('') +
+    `<div style="padding:8px 6px"><button class="tbtn" onclick="addPage()" style="width:100%;font-size:11px">+ New Page</button></div>`;
 }
 
 function getAssetSections() {
@@ -2625,6 +2741,20 @@ function switchRightTab(tab, el) {
 }
 
 function elToCSS(el) {
+  if (el.type === 'line') {
+    const {w, h, x1, y1, x2, y2} = getLineEndpoints(el);
+    return [
+      `position: absolute;`,
+      `left: ${el.x}px;`,
+      `top: ${el.y}px;`,
+      `width: ${w}px;`,
+      `height: ${h}px;`,
+      `/* Render this layer as an inline SVG line */`,
+      `stroke: ${el.stroke || '#1a1a1a'};`,
+      `stroke-width: ${Math.max(1, el.strokeW || 2)}px;`,
+      `/* line: (${x1}, ${y1}) -> (${x2}, ${y2}) */`
+    ].join('\n');
+  }
   const lines = [
     `position: absolute;`,
     `left: ${el.x}px;`,
@@ -2666,7 +2796,7 @@ function quickAdd(type) {
     rect: {type:'rect',name:'Rectangle',w:200,h:120,fill:'#d9d9d9',stroke:'none',strokeW:0,r:0,opacity:1},
     ellipse: {type:'ellipse',name:'Ellipse',w:120,h:120,fill:'#d9d9d9',stroke:'none',strokeW:0,opacity:1},
     text: {type:'text',name:'Text',w:200,h:40,text:'Type something',fill:'#1a1a1a',fontSize:16,fontWeight:'400',textAlign:'left'},
-    line: {type:'line',name:'Line',w:200,h:2,stroke:'#1a1a1a',strokeW:2,opacity:1},
+    line: {type:'line',name:'Line',w:200,h:2,stroke:'#1a1a1a',strokeW:2,opacity:1,lineFlipX:1,lineFlipY:1},
     image: {type:'image',name:'Image',w:300,h:200,r:0,opacity:1},
   };
   const activeFrame = getActiveFrameRecord();
@@ -3668,6 +3798,25 @@ function parseStyleMap(styleText) {
   return map;
 }
 
+function parseBorderDetails(style) {
+  const border = style.border || '';
+  const width = Math.max(0, pxNum(style['border-width'] || border, 0));
+  const reserved = new Set(['solid', 'dashed', 'dotted', 'double', 'none', 'hidden', 'inset', 'outset', 'groove', 'ridge']);
+  let color = style['border-color'] || '';
+  if (!color && border && border !== 'none') {
+    const tokens = border.split(/\s+/).filter(Boolean);
+    color = tokens.find(token => {
+      const normalized = token.toLowerCase();
+      return !reserved.has(normalized) && !normalized.endsWith('px') && !/^\d/.test(normalized);
+    }) || '';
+  }
+  if (!color && width > 0) color = '#000000';
+  return {
+    width,
+    color: width > 0 ? color : 'none'
+  };
+}
+
 function pxNum(v, fallback = 0) {
   if (!v) return fallback;
   const n = parseFloat(String(v).replace('px', ''));
@@ -3697,20 +3846,40 @@ function syncCodeToDesign() {
       if (['script', 'style', 'meta', 'link'].includes(tag)) return;
       const style = parseStyleMap(node.getAttribute('style') || '');
       if (style.position !== 'absolute') return;
+      const border = parseBorderDetails(style);
 
       const base = {
         id: nextElementId(),
         frameId: frame.id,
         x: Math.round(pxNum(style.left, 0)),
         y: Math.round(pxNum(style.top, 0)),
-        w: Math.max(2, Math.round(pxNum(style.width, tag.startsWith('h') ? 360 : 200))),
-        h: Math.max(2, Math.round(pxNum(style.height, tag.startsWith('h') ? 60 : 40))),
+        w: Math.max(2, Math.round(pxNum(style.width || node.getAttribute('width'), tag.startsWith('h') ? 360 : tag === 'svg' ? 200 : 200))),
+        h: Math.max(2, Math.round(pxNum(style.height || node.getAttribute('height'), tag.startsWith('h') ? 60 : tag === 'svg' ? 40 : 40))),
         name: tag.toUpperCase(),
         opacity: style.opacity ? Math.max(0, Math.min(1, parseFloat(style.opacity))) : 1
       };
 
       const borderRadius = style['border-radius'] || '';
       const isTextTag = ['p', 'span', 'a', 'button', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag);
+
+      if (tag === 'svg') {
+        const line = node.querySelector('line');
+        if (!line) return;
+        const x1 = pxNum(line.getAttribute('x1'), 0);
+        const y1 = pxNum(line.getAttribute('y1'), 0);
+        const x2 = pxNum(line.getAttribute('x2'), base.w);
+        const y2 = pxNum(line.getAttribute('y2'), base.h);
+        supported.push({
+          ...base,
+          type: 'line',
+          name: 'Line',
+          stroke: line.getAttribute('stroke') || border.color || '#1a1a1a',
+          strokeW: Math.max(1, pxNum(line.getAttribute('stroke-width'), border.width || 2)),
+          lineFlipX: x2 >= x1 ? 1 : -1,
+          lineFlipY: y2 >= y1 ? 1 : -1
+        });
+        return;
+      }
 
       if (tag === 'img') {
         supported.push({
@@ -3740,15 +3909,22 @@ function syncCodeToDesign() {
 
       const bg = style.background || style['background-color'] || '#d9d9d9';
       if (borderRadius.includes('%') && borderRadius.includes('50')) {
-        supported.push({...base, type: 'ellipse', name: 'Ellipse', fill: bg, stroke: 'none', strokeW: 0});
+        supported.push({
+          ...base,
+          type: 'ellipse',
+          name: 'Ellipse',
+          fill: bg,
+          stroke: border.color,
+          strokeW: border.width
+        });
       } else {
         supported.push({
           ...base,
           type: 'rect',
           name: 'Rectangle',
           fill: bg,
-          stroke: style.border && style.border !== 'none' ? '#000000' : 'none',
-          strokeW: style.border && style.border !== 'none' ? 1 : 0,
+          stroke: border.color,
+          strokeW: border.width,
           r: Math.max(0, Math.round(pxNum(borderRadius, 0)))
         });
       }
@@ -3759,7 +3935,8 @@ function syncCodeToDesign() {
       return;
     }
 
-    state.elements = supported;
+    const preserved = state.elements.filter(el => el.frameId !== frame.id);
+    state.elements = preserved.concat(supported);
     state.selected = [];
     pushHistory();
     render();
@@ -3834,7 +4011,12 @@ function addPage() {
   state.activeFrame = frameId;
   state.selected = [];
   queueAutosave();
-  switchLeftTab('pages', document.querySelector('.ptab.active'));
+  render();
+  renderLayers();
+  renderProps();
+  renderPagesPanel();
+  updateWorkbenchMeta();
+  notify('Page added');
 }
 function switchPage(id) {
   state.pages.forEach(p => p.active = p.id === id);
@@ -3845,8 +4027,95 @@ function switchPage(id) {
   render();
   renderLayers();
   renderProps();
-  switchLeftTab('pages', document.querySelector('.ptab.active'));
+  renderPagesPanel();
   notify('Switched to ' + state.pages.find(p=>p.id===id)?.name);
+}
+
+function renamePage(id) {
+  const page = state.pages.find(p => p.id === id);
+  if (!page) return;
+  const nextName = prompt('Rename page', page.name);
+  if (nextName === null) return;
+  const cleaned = nextName.trim();
+  if (!cleaned) {
+    notify('Page name cannot be empty', 'warn');
+    return;
+  }
+  page.name = cleaned;
+  pushHistory();
+  render();
+  renderPagesPanel();
+  notify('Page renamed');
+}
+
+function duplicatePage(id) {
+  const sourcePage = state.pages.find(p => p.id === id);
+  if (!sourcePage) return;
+  const sourceFrames = state.frames.filter(frame => (frame.pageId || 'p1') === id);
+  if (!sourceFrames.length) {
+    notify('Nothing to duplicate on this page', 'warn');
+    return;
+  }
+  const newPageId = 'p' + (++state.nextId);
+  const frameMap = new Map();
+  state.pages.forEach(p => p.active = false);
+  state.pages.push({id:newPageId, name:`${sourcePage.name} Copy`, active:true});
+  const newFrames = sourceFrames.map((frame, index) => {
+    const newFrameId = 'frame' + (++state.nextId);
+    frameMap.set(frame.id, newFrameId);
+    return {
+      ...frame,
+      id: newFrameId,
+      pageId: newPageId,
+      name: index === 0 ? `${frame.name} Copy` : frame.name,
+      x: frame.x + 40,
+      y: frame.y + 40
+    };
+  });
+  const sourceFrameIds = new Set(sourceFrames.map(frame => frame.id));
+  const newElements = state.elements
+    .filter(el => sourceFrameIds.has(el.frameId))
+    .map(el => ({
+      ...el,
+      id: 'el' + (++state.nextId),
+      frameId: frameMap.get(el.frameId),
+      x: el.x + 24,
+      y: el.y + 24
+    }));
+  state.frames.push(...newFrames);
+  state.elements.push(...newElements);
+  state.activeFrame = newFrames[0].id;
+  state.selected = [];
+  pushHistory();
+  render();
+  renderLayers();
+  renderProps();
+  renderPagesPanel();
+  notify('Page duplicated');
+}
+
+function deletePage(id) {
+  if (state.pages.length <= 1) {
+    notify('At least one page is required', 'warn');
+    return;
+  }
+  const page = state.pages.find(p => p.id === id);
+  if (!page) return;
+  const pageFrameIds = new Set(state.frames.filter(frame => (frame.pageId || 'p1') === id).map(frame => frame.id));
+  state.pages = state.pages.filter(p => p.id !== id);
+  state.frames = state.frames.filter(frame => !pageFrameIds.has(frame.id));
+  state.elements = state.elements.filter(el => !pageFrameIds.has(el.frameId));
+  if (!state.pages.some(p => p.active)) state.pages[0].active = true;
+  const activePageId = getCurrentPageId();
+  const firstFrame = state.frames.find(frame => (frame.pageId || 'p1') === activePageId) || state.frames[0];
+  if (firstFrame) state.activeFrame = firstFrame.id;
+  state.selected = [];
+  pushHistory();
+  render();
+  renderLayers();
+  renderProps();
+  renderPagesPanel();
+  notify(`Deleted ${page.name}`);
 }
 
 // ═══════════════════════════════════════════════════════════
