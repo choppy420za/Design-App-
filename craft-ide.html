@@ -382,8 +382,9 @@ select option{background:var(--bg2)}
 /* ── INLINE TEXT EDITOR ──────────────────────────────────── */
 .inline-edit{
   position:absolute;background:transparent;border:none;outline:none;
-  color:inherit;font:inherit;resize:none;cursor:text;
+  color:inherit;font:inherit;cursor:text;line-height:inherit;
   white-space:pre-wrap;z-index:999;padding:0;overflow:hidden;
+  word-break:break-word;caret-color:currentColor;
 }
 
 /* ── DESIGN ELEMENT ──────────────────────────────────────── */
@@ -2440,6 +2441,25 @@ function canvasDblClick(e) {
   }
 }
 
+function normalizeInlineEditorText(value) {
+  return String(value || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\u00a0/g, ' ');
+}
+
+function finalizeInlineTextEdit(editor, el, sourceNode) {
+  if (!editor || editor.dataset.finalized === '1') return;
+  editor.dataset.finalized = '1';
+  el.text = normalizeInlineEditorText(editor.innerText ?? editor.textContent ?? '');
+  el.h = measureTextHeight(el);
+  editor.remove();
+  if (sourceNode) sourceNode.style.visibility = '';
+  state.textEditing = null;
+  pushHistory();
+  queueAutosave();
+  render();
+}
+
 function startTextEdit(el, clientX, clientY) {
   // Remove any existing inline editor
   const prev = document.getElementById('inline-editor');
@@ -2454,55 +2474,59 @@ function startTextEdit(el, clientX, clientY) {
   const sourceNode = document.querySelector(`[data-el="${el.id}"]`);
   if (sourceNode) sourceNode.style.visibility = 'hidden';
 
-  const ta = document.createElement('textarea');
-  ta.id = 'inline-editor';
-  ta.className = 'inline-edit';
-  ta.style.left = sx + 'px'; ta.style.top = sy + 'px';
-  ta.style.width = sw + 'px'; ta.style.height = sh + 'px';
-  ta.style.fontSize = (el.fontSize * state.zoom) + 'px';
-  ta.style.fontWeight = el.fontWeight || '400';
-  ta.style.textAlign = el.textAlign || 'left';
-  ta.style.color = el.fill || '#1a1a1a';
-  ta.style.fontFamily = el.fontFamily || 'inherit';
-  ta.style.letterSpacing = el.letterSpacing ? `${el.letterSpacing * state.zoom}px` : 'normal';
-  ta.style.lineHeight = String(el.lineHeight || '1.4');
-  ta.value = el.text || '';
-  ta.style.background = 'rgba(255,255,255,.94)';
-  ta.style.border = '2px solid var(--accent)';
-  ta.style.borderRadius = '4px';
-  ta.style.padding = '2px 3px';
-  ta.style.boxSizing = 'border-box';
+  const editor = document.createElement('div');
+  editor.id = 'inline-editor';
+  editor.className = 'inline-edit';
+  editor.contentEditable = 'true';
+  editor.spellcheck = false;
+  editor.style.left = sx + 'px'; editor.style.top = sy + 'px';
+  editor.style.width = sw + 'px'; editor.style.height = sh + 'px';
+  editor.style.fontSize = (el.fontSize * state.zoom) + 'px';
+  editor.style.fontWeight = el.fontWeight || '400';
+  editor.style.textAlign = el.textAlign || 'left';
+  editor.style.color = el.fill || '#1a1a1a';
+  editor.style.fontFamily = el.fontFamily || 'inherit';
+  editor.style.letterSpacing = el.letterSpacing ? `${el.letterSpacing * state.zoom}px` : 'normal';
+  editor.style.lineHeight = String(el.lineHeight || '1.4');
+  editor.textContent = el.text || '';
+  editor.style.background = 'rgba(255,255,255,.94)';
+  editor.style.border = '2px solid var(--accent)';
+  editor.style.borderRadius = '4px';
+  editor.style.padding = '2px 3px';
+  editor.style.boxSizing = 'border-box';
 
-  document.getElementById('canvas-wrap').appendChild(ta);
-  ta.focus(); ta.select();
+  document.getElementById('canvas-wrap').appendChild(editor);
+  editor.focus();
+  const sel = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(editor);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
   state.textEditing = el.id;
 
   const syncInlineEditorSize = () => {
-    ta.style.height = 'auto';
-    ta.style.height = Math.max(sh, ta.scrollHeight + 2) + 'px';
+    editor.style.height = 'auto';
+    editor.style.height = Math.max(sh, editor.scrollHeight + 2) + 'px';
   };
   syncInlineEditorSize();
 
-  ta.addEventListener('blur', () => {
-    el.text = ta.value;
-    el.h = measureTextHeight(el);
-    ta.remove();
-    if (sourceNode) sourceNode.style.visibility = '';
-    state.textEditing = null;
-    pushHistory();
-    queueAutosave();
-    render();
-  });
-  ta.addEventListener('input', syncInlineEditorSize);
-  ta.addEventListener('keydown', e => {
+  editor.addEventListener('blur', () => finalizeInlineTextEdit(editor, el, sourceNode));
+  editor.addEventListener('input', syncInlineEditorSize);
+  editor.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       e.preventDefault();
-      if (sourceNode) sourceNode.style.visibility = '';
-      ta.blur();
+      editor.textContent = el.text || '';
+      finalizeInlineTextEdit(editor, el, sourceNode);
     }
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ta.blur(); }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      finalizeInlineTextEdit(editor, el, sourceNode);
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finalizeInlineTextEdit(editor, el, sourceNode); }
   });
-  ta.addEventListener('mousedown', e => e.stopPropagation());
+  editor.addEventListener('mousedown', e => e.stopPropagation());
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3049,6 +3073,15 @@ function renderProps() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px">
         <button class="tbtn" style="font-size:10px" onclick="editSelectedText()">Edit in Canvas</button>
         <button class="tbtn" style="font-size:10px" onclick="autoSizeSelectedText()">Auto Size</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
+        <button class="tbtn" style="font-size:10px" onclick="transformSelectedText('upper')">UPPER</button>
+        <button class="tbtn" style="font-size:10px" onclick="transformSelectedText('lower')">lower</button>
+        <button class="tbtn" style="font-size:10px" onclick="transformSelectedText('title')">Title Case</button>
+        <button class="tbtn" style="font-size:10px" onclick="transformSelectedText('sentence')">Sentence</button>
+      </div>
+      <div style="margin-top:4px">
+        <button class="tbtn" style="width:100%;font-size:10px" onclick="fitTextToBoxSelected()">Fit Text to Box</button>
       </div>
     </div>`;
   }
@@ -3968,6 +4001,62 @@ function autoSizeSelectedText() {
   pushHistory();
   render(); renderProps();
   notify('Text auto-sized');
+}
+
+function transformSelectedText(mode) {
+  if (state.selected.length !== 1) return;
+  const el = state.elements.find(e => e.id === state.selected[0]);
+  if (!el || el.type !== 'text') return;
+  if (isLocked(el)) { notify('Layer is locked', 'warn'); return; }
+  const original = String(el.text || '');
+  let next = original;
+  if (mode === 'upper') next = original.toUpperCase();
+  if (mode === 'lower') next = original.toLowerCase();
+  if (mode === 'title') next = original.replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+  if (mode === 'sentence') {
+    next = original.toLowerCase().replace(/(^\s*[a-z])|([.!?]\s+[a-z])/g, chunk => chunk.toUpperCase());
+  }
+  if (next === original) return;
+  el.text = next;
+  el.h = measureTextHeight(el);
+  pushHistory();
+  render();
+  renderProps();
+  notify('Text transform applied', 'success');
+}
+
+function fitTextToBoxSelected() {
+  if (state.selected.length !== 1) return;
+  const el = state.elements.find(e => e.id === state.selected[0]);
+  if (!el || el.type !== 'text') return;
+  if (isLocked(el)) { notify('Layer is locked', 'warn'); return; }
+  const minSize = 10;
+  const maxSize = 220;
+  let size = Math.max(minSize, Math.min(maxSize, Number(el.fontSize || 16)));
+  let measured = measureTextHeight(el);
+  if (measured <= el.h) {
+    while (size < maxSize) {
+      const next = size + 1;
+      el.fontSize = next;
+      const h = measureTextHeight(el);
+      if (h > el.h) {
+        el.fontSize = size;
+        break;
+      }
+      size = next;
+      measured = h;
+    }
+  } else {
+    while (size > minSize && measured > el.h) {
+      size -= 1;
+      el.fontSize = size;
+      measured = measureTextHeight(el);
+    }
+  }
+  pushHistory();
+  render();
+  renderProps();
+  notify('Text fit to box', 'success');
 }
 
 function triggerImageImport() {
