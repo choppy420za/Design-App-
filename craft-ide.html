@@ -1083,6 +1083,7 @@ const state = {
   clipboard: null,
   styleClipboard: null,
   customComponents: [],
+  groups: [],
   hoveredId: null,
   frames: [
     {id:'frame1', pageId:'p1', name:'Desktop', x:0, y:0, w:1280, h:800, bg:'#ffffff'}
@@ -1094,6 +1095,7 @@ const state = {
   snapOn: true,
   nextId: 100,
   dragging: false, dragEl: null, dragStart: null, dragElStart: null,
+  dragSelectionStart: null,
   dragMoved: false,
   resizing: false, resizeHandle: null, resizeStart: null, resizeElStart: null,
   marqueeActive: false, marqueeStart: null,
@@ -1547,7 +1549,8 @@ function saveProject() {
     previewInspect: state.previewInspect,
     assetSearch: state.assetSearch,
     customComponents: state.customComponents,
-    layoutGap: state.layoutGap
+    layoutGap: state.layoutGap,
+    groups: state.groups
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -1584,6 +1587,8 @@ function loadProject() {
     state.assetSearch = data.assetSearch || state.assetSearch;
     state.customComponents = Array.isArray(data.customComponents) ? data.customComponents : state.customComponents;
     state.layoutGap = Number.isFinite(data.layoutGap) ? Math.max(0, data.layoutGap) : state.layoutGap;
+    state.groups = Array.isArray(data.groups) ? data.groups : state.groups;
+    cleanupGroups();
     return true;
   } catch (_) {
     return false;
@@ -2121,7 +2126,15 @@ function canvasMouseDown(e) {
     const hit = getElAtPoint(cx, cy);
     if (hit) {
       state.activeFrame = hit.frameId;
-      if (!e.shiftKey) state.selected = [hit.id];
+      if (!e.shiftKey) {
+        if (hit.groupId) {
+          state.selected = state.elements
+            .filter(item => item.groupId === hit.groupId && !isLocked(item))
+            .map(item => item.id);
+        } else {
+          state.selected = [hit.id];
+        }
+      }
       else {
         if (state.selected.includes(hit.id)) state.selected = state.selected.filter(i => i !== hit.id);
         else state.selected.push(hit.id);
@@ -2141,6 +2154,11 @@ function canvasMouseDown(e) {
       state.dragMoved = false;
       const el = state.elements.find(el => el.id === hit.id);
       state.dragElStart = {x: el.x, y: el.y};
+      state.dragSelectionStart = Object.fromEntries(
+        state.elements
+          .filter(item => state.selected.includes(item.id))
+          .map(item => [item.id, {x: item.x, y: item.y}])
+      );
     } else {
       const fr = canvasToFrame(cx, cy);
       if (fr.frameId) state.activeFrame = fr.frameId;
@@ -2213,25 +2231,38 @@ function canvasMouseMove(e) {
     const dy = (e.clientY - state.dragStart.y) / state.zoom;
     if (!state.dragMoved && (Math.abs(dx) > 1 || Math.abs(dy) > 1)) state.dragMoved = true;
     if (!state.dragMoved) return;
-    const el = state.elements.find(el => el.id === state.dragEl);
-    if (isLocked(el)) return;
-    if (el) {
-      let nextX = state.dragElStart.x + dx;
-      let nextY = state.dragElStart.y + dy;
-      if (state.snapOn) {
-        const snapped = snapMovePosition(el, nextX, nextY);
-        nextX = snapped.x;
-        nextY = snapped.y;
-        showSnapGuides(snapped.guides);
-      } else {
-        const frame = state.frames.find(item => item.id === el.frameId);
-        const clamped = clampMoveToFrame(frame, el, nextX, nextY);
-        nextX = clamped.x;
-        nextY = clamped.y;
+    const primary = state.elements.find(el => el.id === state.dragEl);
+    if (isLocked(primary)) return;
+    if (primary) {
+      if (state.selected.length > 1 && state.dragSelectionStart) {
         clearSnapGuides();
+        state.selected.forEach(id => {
+          const item = state.elements.find(el => el.id === id);
+          const start = state.dragSelectionStart[id];
+          if (!item || !start || isLocked(item)) return;
+          const frame = state.frames.find(entry => entry.id === item.frameId);
+          const clamped = clampMoveToFrame(frame, item, start.x + dx, start.y + dy);
+          item.x = clamped.x;
+          item.y = clamped.y;
+        });
+      } else {
+        let nextX = state.dragElStart.x + dx;
+        let nextY = state.dragElStart.y + dy;
+        if (state.snapOn) {
+          const snapped = snapMovePosition(primary, nextX, nextY);
+          nextX = snapped.x;
+          nextY = snapped.y;
+          showSnapGuides(snapped.guides);
+        } else {
+          const frame = state.frames.find(item => item.id === primary.frameId);
+          const clamped = clampMoveToFrame(frame, primary, nextX, nextY);
+          nextX = clamped.x;
+          nextY = clamped.y;
+          clearSnapGuides();
+        }
+        primary.x = Math.round(nextX);
+        primary.y = Math.round(nextY);
       }
-      el.x = Math.round(nextX);
-      el.y = Math.round(nextY);
       render(); renderProps();
     }
     return;
@@ -2317,6 +2348,7 @@ function canvasMouseUp(e) {
     const changed = state.dragMoved;
     state.dragging = false;
     state.dragEl = null;
+    state.dragSelectionStart = null;
     state.dragMoved = false;
     clearSnapGuides();
     if (changed) pushHistory();
@@ -2450,20 +2482,30 @@ function normalizeInlineEditorText(value) {
 function finalizeInlineTextEdit(editor, el, sourceNode) {
   if (!editor || editor.dataset.finalized === '1') return;
   editor.dataset.finalized = '1';
-  el.text = normalizeInlineEditorText(editor.innerText ?? editor.textContent ?? '');
-  el.h = measureTextHeight(el);
+  if (el) {
+    const rawText = editor.textContent ?? editor.innerText ?? '';
+    el.text = normalizeInlineEditorText(rawText);
+    el.h = measureTextHeight(el);
+  }
   editor.remove();
   if (sourceNode) sourceNode.style.visibility = '';
   state.textEditing = null;
-  pushHistory();
-  queueAutosave();
-  render();
+  if (el) {
+    pushHistory();
+    queueAutosave();
+    render();
+  }
 }
 
 function startTextEdit(el, clientX, clientY) {
-  // Remove any existing inline editor
+  // Finalize any existing inline editor before switching layers.
   const prev = document.getElementById('inline-editor');
-  if (prev) prev.remove();
+  if (prev) {
+    const prevLayerId = prev.dataset.layerId || state.textEditing;
+    const prevEl = state.elements.find(item => item.id === prevLayerId);
+    const prevSource = prevLayerId ? document.querySelector(`[data-el="${prevLayerId}"]`) : null;
+    finalizeInlineTextEdit(prev, prevEl, prevSource);
+  }
 
   const frame = state.frames.find(f => f.id === el.frameId);
   if (!frame) return;
@@ -2477,6 +2519,7 @@ function startTextEdit(el, clientX, clientY) {
   const editor = document.createElement('div');
   editor.id = 'inline-editor';
   editor.className = 'inline-edit';
+  editor.dataset.layerId = el.id;
   editor.contentEditable = 'true';
   editor.spellcheck = false;
   editor.style.left = sx + 'px'; editor.style.top = sy + 'px';
@@ -2586,6 +2629,7 @@ function ctxAction(action) {
     queueAutosave();
   } else if (action === 'delete') {
     state.elements = state.elements.filter(e => !state.selected.includes(e.id));
+    cleanupGroups();
     state.selected = [];
     render(); renderProps(); renderLayers(); pushHistory();
     queueAutosave();
@@ -2619,8 +2663,55 @@ function ctxAction(action) {
   } else if (action === 'appendBundle') {
     appendSelectionBundleToCode();
   } else if (action === 'group') {
-    notify('Group — coming in next build');
+    groupSelected();
+  } else if (action === 'ungroup') {
+    ungroupSelected();
   }
+}
+
+function getGroupById(id) {
+  return state.groups.find(group => group.id === id) || null;
+}
+
+function cleanupGroups() {
+  const activeIds = new Set(state.elements.map(el => el.groupId).filter(Boolean));
+  state.groups = state.groups.filter(group => activeIds.has(group.id));
+}
+
+function groupSelected() {
+  const sel = getSelectedEls().filter(el => !isLocked(el));
+  if (sel.length < 2) {
+    notify('Select at least 2 unlocked layers to group', 'warn');
+    return;
+  }
+  const groupId = 'grp' + (++state.nextId);
+  const groupName = `Group ${state.groups.length + 1}`;
+  sel.forEach(el => { el.groupId = groupId; });
+  state.groups.push({id: groupId, name: groupName});
+  pushHistory();
+  render();
+  renderLayers();
+  renderProps();
+  notify(`${groupName} created`, 'success');
+}
+
+function ungroupSelected() {
+  const sel = getSelectedEls();
+  if (!sel.length) return;
+  const groupIds = [...new Set(sel.map(el => el.groupId).filter(Boolean))];
+  if (!groupIds.length) {
+    notify('No grouped layers selected', 'warn');
+    return;
+  }
+  state.elements.forEach(el => {
+    if (groupIds.includes(el.groupId)) delete el.groupId;
+  });
+  state.groups = state.groups.filter(group => !groupIds.includes(group.id));
+  pushHistory();
+  render();
+  renderLayers();
+  renderProps();
+  notify('Ungrouped selection', 'success');
 }
 
 function copyStyleSelected() {
@@ -2848,9 +2939,10 @@ function renderLayers() {
   let html = '';
   [...getElementsForCurrentPage()].reverse().forEach(el => {
     const sel = state.selected.includes(el.id);
+    const group = el.groupId ? getGroupById(el.groupId) : null;
     html += `<div class="layer-item ${sel?'selected':''}" onclick="selectFromLayer('${el.id}')" data-id="${el.id}">
       <span class="layer-icon" style="font-size:11px">${icons[el.type]||'□'}</span>
-      <span class="layer-name">${el.name||el.type}</span>
+      <span class="layer-name">${el.name||el.type}${group ? ` · ${group.name}` : ''}</span>
       <span class="layer-vis" onclick="toggleLock(event,'${el.id}')" title="Lock">${el.locked?'🔒':'🔓'}</span>
       <span class="layer-vis" onclick="toggleVis(event,'${el.id}')">👁</span>
     </div>`;
@@ -4103,6 +4195,8 @@ async function importProjectJSON(file) {
   state.assetSearch = data.assetSearch || '';
   state.customComponents = Array.isArray(data.customComponents) ? data.customComponents : state.customComponents;
   state.layoutGap = Number.isFinite(data.layoutGap) ? Math.max(0, data.layoutGap) : state.layoutGap;
+  state.groups = Array.isArray(data.groups) ? data.groups : state.groups;
+  cleanupGroups();
   state.selected = [];
   pushHistory();
   render(); renderLayers(); renderProps();
@@ -6050,7 +6144,8 @@ function exportProjectJSON() {
       previewInspect: state.previewInspect,
       assetSearch: state.assetSearch,
       customComponents: state.customComponents,
-      layoutGap: state.layoutGap
+      layoutGap: state.layoutGap,
+      groups: state.groups
     }
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
