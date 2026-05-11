@@ -615,7 +615,7 @@ kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;bo
 .asset-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;padding:4px 8px}
 .asset-item{
   background:var(--bg2);border:1px solid var(--border);border-radius:var(--r6);
-  padding:8px 6px;cursor:pointer;text-align:center;transition:all .12s;
+  padding:8px 6px;cursor:pointer;text-align:center;transition:all .12s;position:relative;
 }
 .asset-item:hover{border-color:var(--accent);background:var(--bg3)}
 .asset-icon{font-size:18px;margin-bottom:3px;display:flex;align-items:center;justify-content:center;min-height:28px}
@@ -914,6 +914,9 @@ kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;bo
         </div>
         <div class="preview-bar-right">
           <button class="tbtn" id="preview-inspect-btn" style="font-size:10px;padding:3px 8px" onclick="togglePreviewInspect()">Inspect</button>
+          <button class="tbtn" style="font-size:10px;padding:3px 8px" onclick="copySelectionCodeBundle()">Snippet</button>
+          <button class="tbtn" style="font-size:10px;padding:3px 8px" onclick="copyActiveCodeFile()">Copy File</button>
+          <button class="tbtn" style="font-size:10px;padding:3px 8px" onclick="downloadActiveCodeFile()">Save File</button>
           <button class="tbtn" style="font-size:10px;padding:3px 8px" onclick="validateCode()">✓ Lint</button>
           <button class="tbtn tbtn-accent" style="font-size:10px;padding:3px 8px" onclick="toggleAIModal(true)">✦ AI</button>
           <button class="tbtn" style="font-size:10px;padding:3px 8px;font-family:var(--mono)" onclick="refreshPreview()">↻</button>
@@ -964,6 +967,9 @@ kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;bo
   <div class="ctx-sep"></div>
   <div class="ctx-item" onclick="ctxAction('group')">Group <span class="ctx-shortcut">⌘G</span></div>
   <div class="ctx-item" onclick="ctxAction('ungroup')">Ungroup</div>
+  <div class="ctx-item" onclick="ctxAction('saveComponent')">Save as Component</div>
+  <div class="ctx-item" onclick="ctxAction('copyBundle')">Copy Selection Bundle</div>
+  <div class="ctx-item" onclick="ctxAction('appendBundle')">Append Bundle to Code</div>
   <div class="ctx-sep"></div>
   <div class="ctx-item" onclick="ctxAction('bringFront')">Bring to Front <span class="ctx-shortcut">⌘]</span></div>
   <div class="ctx-item" onclick="ctxAction('sendBack')">Send to Back <span class="ctx-shortcut">⌘[</span></div>
@@ -1075,6 +1081,7 @@ const state = {
   selected: [],
   clipboard: null,
   styleClipboard: null,
+  customComponents: [],
   hoveredId: null,
   frames: [
     {id:'frame1', pageId:'p1', name:'Desktop', x:0, y:0, w:1280, h:800, bg:'#ffffff'}
@@ -1103,6 +1110,7 @@ const state = {
   openTabs: ['html'],
   aiBusy: false,
   assetSearch: '',
+  layoutGap: 24,
   previewMode: 'web',
   previewDevice: 'responsive',
   previewInspect: false
@@ -1175,6 +1183,24 @@ const ICON_LIBRARY = {
   penTool:{label:'Pen Tool',viewBox:'0 0 24 24',content:'<path d="M12 19l7-7-4-4-7 7-1 5z"/><path d="M14 6l4 4"/><circle cx="5" cy="19" r="2"/>'},
   compass:{label:'Compass',viewBox:'0 0 24 24',content:'<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 5.2-5.2 2.2 2.2-5.2z"/>'},
   arrowUpRight:{label:'Arrow Up Right',viewBox:'0 0 24 24',content:'<path d="M7 17L17 7"/><path d="M9 7h8v8"/>'},
+  palette:{label:'Palette',viewBox:'0 0 24 24',content:'<path d="M12 3a9 9 0 0 0 0 18h1.2a2 2 0 0 0 0-4h-.7a2 2 0 0 1 0-4H14a7 7 0 1 0-2-10z"/><circle cx="7.5" cy="10" r="1.1"/><circle cx="10.5" cy="7.5" r="1.1"/><circle cx="14.5" cy="7.5" r="1.1"/>'},
+  wand:{label:'Magic Wand',viewBox:'0 0 24 24',content:'<path d="M3 21l9-9"/><path d="M14 4l1.1 2.9L18 8l-2.9 1.1L14 12l-1.1-2.9L10 8l2.9-1.1L14 4z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z"/>'},
+  bug:{label:'Bug',viewBox:'0 0 24 24',content:'<path d="M9 9h6v8a3 3 0 0 1-6 0z"/><path d="M8 6a4 4 0 0 1 8 0"/><path d="M4 9h4M16 9h4M5 14h4M15 14h4M7 4l-2-2M17 4l2-2"/>'},
+  code2:{label:'Code',viewBox:'0 0 24 24',content:'<path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/><path d="M14 4l-4 16"/>'},
+  link:{label:'Link',viewBox:'0 0 24 24',content:'<path d="M10 13a5 5 0 0 1 0-7l1.5-1.5a5 5 0 1 1 7 7L17 13"/><path d="M14 11a5 5 0 0 1 0 7L12.5 19.5a5 5 0 1 1-7-7L7 11"/>'},
+  eye:{label:'Eye',viewBox:'0 0 24 24',content:'<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/>'},
+  eyeOff:{label:'Eye Off',viewBox:'0 0 24 24',content:'<path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 4.2A11 11 0 0 1 12 4c6.5 0 10 8 10 8a18.6 18.6 0 0 1-3.2 4.4"/><path d="M6.2 6.2A18.9 18.9 0 0 0 2 12s3.5 8 10 8a10.7 10.7 0 0 0 5.8-1.7"/>'},
+  panelLeft:{label:'Panel Left',viewBox:'0 0 24 24',content:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>'},
+  panelRight:{label:'Panel Right',viewBox:'0 0 24 24',content:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>'},
+  laptop:{label:'Laptop',viewBox:'0 0 24 24',content:'<rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 19h20"/>'},
+  smartphone:{label:'Smartphone',viewBox:'0 0 24 24',content:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><circle cx="12" cy="18" r=".8" fill="currentColor" stroke="none"/>'},
+  tabletDevice:{label:'Tablet',viewBox:'0 0 24 24',content:'<rect x="5" y="3" width="14" height="18" rx="2.5"/><circle cx="12" cy="17.5" r=".8" fill="currentColor" stroke="none"/>'},
+  pieChart:{label:'Pie Chart',viewBox:'0 0 24 24',content:'<path d="M12 3v9h9"/><path d="M20.5 13A8.5 8.5 0 1 1 11 3.5"/>'},
+  target:{label:'Target',viewBox:'0 0 24 24',content:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/>'},
+  paperclip:{label:'Paperclip',viewBox:'0 0 24 24',content:'<path d="M8 12.5l6.5-6.5a3 3 0 1 1 4.2 4.2l-8.9 8.9a5 5 0 1 1-7.1-7.1L11 3.8"/>'},
+  clipboardList:{label:'Checklist',viewBox:'0 0 24 24',content:'<rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 4.5h6"/><path d="M9 10h6M9 14h6"/><path d="M8 9l-1 1-1-1M8 13l-1 1-1-1"/>'},
+  fileCode:{label:'File Code',viewBox:'0 0 24 24',content:'<path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M10 13l-2 2 2 2M14 13l2 2-2 2"/>'},
+  pointer:{label:'Pointer',viewBox:'0 0 24 24',content:'<path d="M4 3l7.5 18 2.5-6 6 .5z"/>'},
   monitor:{label:'Monitor',viewBox:'0 0 24 24',content:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/>'}
 };
 
@@ -1518,7 +1544,9 @@ function saveProject() {
     previewMode: state.previewMode,
     previewDevice: state.previewDevice,
     previewInspect: state.previewInspect,
-    assetSearch: state.assetSearch
+    assetSearch: state.assetSearch,
+    customComponents: state.customComponents,
+    layoutGap: state.layoutGap
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -1553,6 +1581,8 @@ function loadProject() {
     state.previewDevice = data.previewDevice || state.previewDevice;
     state.previewInspect = !!data.previewInspect;
     state.assetSearch = data.assetSearch || state.assetSearch;
+    state.customComponents = Array.isArray(data.customComponents) ? data.customComponents : state.customComponents;
+    state.layoutGap = Number.isFinite(data.layoutGap) ? Math.max(0, data.layoutGap) : state.layoutGap;
     return true;
   } catch (_) {
     return false;
@@ -2558,6 +2588,12 @@ function ctxAction(action) {
     pasteStyleSelected();
   } else if (action === 'toggleLock') {
     toggleLockSelected();
+  } else if (action === 'saveComponent') {
+    saveSelectionAsComponent();
+  } else if (action === 'copyBundle') {
+    copySelectionCodeBundle();
+  } else if (action === 'appendBundle') {
+    appendSelectionBundleToCode();
   } else if (action === 'group') {
     notify('Group — coming in next build');
   }
@@ -2833,6 +2869,16 @@ function renderProps() {
     <div class="prop-section">
       <div class="prop-sec-hd"><span class="prop-sec-title">Selection</span></div>
       <div style="font-size:11px;color:var(--txt1)">${state.selected.length} layers selected</div>
+      <div class="prop-row2" style="margin-top:8px">
+        <div class="prop-field">
+          <div class="prop-field-label">Gap</div>
+          <input class="prop-input" value="${state.layoutGap}" onchange="setLayoutGap(this.value)" />
+        </div>
+        <div class="prop-field">
+          <div class="prop-field-label">Frame</div>
+          <button class="tbtn" style="width:100%;font-size:10px;padding:6px 4px" onclick="centerSelectedInFrame()">Center All</button>
+        </div>
+      </div>
     </div>
     <div class="prop-section">
       <div class="prop-sec-hd"><span class="prop-sec-title">Align</span></div>
@@ -2847,9 +2893,28 @@ function renderProps() {
     </div>
     <div class="prop-section">
       <div class="prop-sec-hd"><span class="prop-sec-title">Distribute</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px">
         <button class="tbtn" onclick="distributeSelected('x')" style="font-size:10px;padding:4px">Horiz</button>
         <button class="tbtn" onclick="distributeSelected('y')" style="font-size:10px;padding:4px">Vert</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <button class="tbtn" onclick="tidySelected('x')" style="font-size:10px;padding:4px">Tidy X</button>
+        <button class="tbtn" onclick="tidySelected('y')" style="font-size:10px;padding:4px">Tidy Y</button>
+      </div>
+    </div>
+    <div class="prop-section">
+      <div class="prop-sec-hd"><span class="prop-sec-title">Match Size</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <button class="tbtn" onclick="matchSelectedSize('w')" style="font-size:10px;padding:4px">Match Width</button>
+        <button class="tbtn" onclick="matchSelectedSize('h')" style="font-size:10px;padding:4px">Match Height</button>
+      </div>
+    </div>
+    <div class="prop-section">
+      <div class="prop-sec-hd"><span class="prop-sec-title">Component & Code</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <button class="tbtn" onclick="saveSelectionAsComponent()" style="font-size:10px;padding:4px">Save Component</button>
+        <button class="tbtn" onclick="copySelectionCodeBundle()" style="font-size:10px;padding:4px">Copy Bundle</button>
+        <button class="tbtn" onclick="appendSelectionBundleToCode()" style="font-size:10px;padding:4px;grid-column:span 2">Append to Code</button>
       </div>
     </div>`;
     return;
@@ -3080,10 +3145,14 @@ function renderProps() {
   <div class="prop-section">
     <div class="prop-sec-hd"><span class="prop-sec-title">Layer</span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+      <button class="tbtn" onclick="centerSelectedInFrame()" style="font-size:10px;padding:4px">◎ Center</button>
+      <button class="tbtn" onclick="saveSelectionAsComponent()" style="font-size:10px;padding:4px">◇ Component</button>
       <button class="tbtn" onclick="ctxAction('bringFront')" style="font-size:10px;padding:4px">↑ Front</button>
       <button class="tbtn" onclick="ctxAction('sendBack')" style="font-size:10px;padding:4px">↓ Back</button>
       <button class="tbtn" onclick="ctxAction('duplicate')" style="font-size:10px;padding:4px">⧉ Duplicate</button>
       <button class="tbtn" onclick="ctxAction('toggleLock')" style="font-size:10px;padding:4px">${el.locked?'🔓 Unlock':'🔒 Lock'}</button>
+      <button class="tbtn" onclick="copySelectionCodeBundle()" style="font-size:10px;padding:4px">Copy Bundle</button>
+      <button class="tbtn" onclick="appendSelectionBundleToCode()" style="font-size:10px;padding:4px">Append Code</button>
       <button class="tbtn" onclick="ctxAction('delete')" style="font-size:10px;padding:4px;color:var(--red);grid-column:span 2">⌦ Delete</button>
     </div>
   </div>`;
@@ -3186,6 +3255,10 @@ function getIconAssetItems() {
   return Object.entries(ICON_LIBRARY).map(([key, def]) => [def.label, key, '', 'icon']);
 }
 
+function getCustomComponentItems() {
+  return state.customComponents.map(component => [component.name, component.id, '', 'customComponent']);
+}
+
 function getTextPresetItems() {
   return Object.entries(TEXT_PRESET_LIBRARY).map(([key, def]) => [def.label, key, '', 'textPreset']);
 }
@@ -3197,6 +3270,7 @@ function getPaletteAssetItems() {
 function insertAsset(kind, key) {
   if (kind === 'shape') return quickAdd(key);
   if (kind === 'icon') return addIconAsset(key);
+  if (kind === 'customComponent') return insertCustomComponent(key);
   if (kind === 'textPreset') return addTextPresetAsset(key);
   if (kind === 'palette') return addPaletteAsset(key);
   return addComponent(key);
@@ -3214,6 +3288,11 @@ function getAssetSections() {
         ['Image','image','⊟','shape']
       ]
     },
+    ...(state.customComponents.length ? [{
+      title: 'My Components',
+      kind: 'customComponents',
+      items: getCustomComponentItems()
+    }] : []),
     {
       title: 'Icons',
       items: getIconAssetItems()
@@ -3241,6 +3320,8 @@ function getAssetSections() {
         ['Pricing Hero','pricing','⬡','component'],
         ['Testimonial','testimonial','⬡','component'],
         ['Feature Grid','features','⬡','component'],
+        ['Spotlight','featureSpotlight','⬡','component'],
+        ['Team Grid','teamGrid','⬡','component'],
         ['Stats','stats','⬡','component'],
         ['Gallery','gallery','⬡','component'],
         ['FAQ','faq','⬡','component'],
@@ -3272,6 +3353,8 @@ function getAssetSections() {
         ['Timeline','timeline','⬢','component'],
         ['Notification','notification','⬢','component'],
         ['Modal','modal','⬢','component'],
+        ['Doc Editor','docEditor','⬢','component'],
+        ['Settings Panel','settingsPanel','⬢','component'],
         ['Chat','chat','⬢','component'],
         ['Conversation','chat','⬢','component']
       ]
@@ -3283,7 +3366,8 @@ function getAssetSections() {
         ['Task List','taskList','⬢','component'],
         ['Command Menu','commandMenu','⬢','component'],
         ['Activity Feed','activityFeed','⬢','component'],
-        ['Search Bar','searchBar','⬢','component']
+        ['Search Bar','searchBar','⬢','component'],
+        ['Analytics Hero','analyticsHero','⬢','component']
       ]
     },
     {
@@ -3340,6 +3424,9 @@ function renderAssetLibrary() {
         <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="exportProjectJSON()">Export JSON</button>
         <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="copyCodeBundleToClipboard()">Copy Bundle</button>
         <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="downloadCodeBundle()">Save Bundle</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="copySelectionCodeBundle()">Copy Snippet</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="downloadDesignTokensJSON()">Export Tokens</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px;grid-column:span 2" onclick="saveSelectionAsComponent()">Save Selection as Component</button>
         <button class="tbtn" style="font-size:10px;padding:6px 4px;grid-column:span 2" onclick="runPreview()">Open Preview</button>
       </div>
     </div>
@@ -3355,6 +3442,7 @@ function renderAssetLibrary() {
         <div class="asset-grid">
           ${section.items.map(([label,key,icon,kind]) => `
             <div class="asset-item" onclick="insertAsset('${kind}','${key}')">
+              ${section.kind === 'customComponents' ? `<button class="layer-action-btn danger" style="position:absolute;top:4px;right:4px;opacity:1" title="Delete component" onclick="event.stopPropagation();removeCustomComponent('${key}')">×</button>` : ''}
               <div class="asset-icon" style="${kind === 'shape' ? '' : 'color:#111;background:#f3f4f6;border-radius:8px;width:28px;height:28px;margin:0 auto 4px'}">${getAssetIconSVG(key, icon)}</div>
               <div class="asset-label">${label}</div>
             </div>`).join('')}
@@ -3428,7 +3516,8 @@ function getAssetIconSVG(key, fallback) {
     browserWindow:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2" width="13" height="12" rx="2"/><path d="M1.5 5h13"/><circle cx="4" cy="3.5" r=".6" fill="currentColor" stroke="none"/><circle cx="6" cy="3.5" r=".6" fill="currentColor" stroke="none"/></svg>`,
     phoneMockup:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="1.5" width="8" height="13" rx="2"/><path d="M7 3h2"/></svg>`,
     emptyState:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="8" cy="7" r="2"/><path d="M5 11h6"/></svg>`,
-    searchResults:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5.5" cy="5.5" r="2.3"/><path d="M7.2 7.2L10 10"/><path d="M3 11.5h10M3 13.5h7"/></svg>`
+    searchResults:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5.5" cy="5.5" r="2.3"/><path d="M7.2 7.2L10 10"/><path d="M3 11.5h10M3 13.5h7"/></svg>`,
+    component:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="5.5" y="9" width="5" height="5" rx="1"/><path d="M7 4.5h2M8 7v2"/></svg>`
   };
   return icons[key] || fallback;
 }
@@ -3524,7 +3613,7 @@ function elToCSS(el) {
 function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escapeAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 function buildLayerDataAttrs(el) {
-  return ` data-craft-layer="${escapeAttr(el.id)}" data-craft-name="${escapeAttr(el.name || el.type)}" data-craft-type="${escapeAttr(el.type)}"`;
+  return ` data-craft-layer="${escapeAttr(el.id)}" data-craft-name="${escapeAttr(el.name || el.type)}" data-craft-type="${escapeAttr(el.type)}"${el.componentName ? ` data-craft-component="${escapeAttr(el.componentName)}"` : ''}`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3678,6 +3767,104 @@ function addPaletteAsset(key) {
   notify(`${palette.label} palette added`);
 }
 
+function buildSelectionSyncBundle() {
+  const sel = getSelectedEls();
+  if (!sel.length) {
+    notify('Select one or more layers first', 'warn');
+    return null;
+  }
+  const frame = getSelectionFrameRecord(sel);
+  if (!frame) {
+    notify('Selection must be inside one frame', 'warn');
+    return null;
+  }
+  const bounds = getSelectionBounds(sel);
+  const selectionName = sel.length === 1 ? (sel[0].name || sel[0].type) : `Selection ${sel.length}`;
+  const uniqueSuffix = `${state.nextId}-${sel.length}`;
+  const sectionClass = `${slugifyClassName(selectionName, 'selection')}-snippet-${uniqueSuffix}`;
+  const runtimeName = sectionClass.replace(/[^a-z0-9]+/gi, '_').replace(/^_+/, '').toUpperCase();
+  const layers = sel.map(layer => ({
+    ...JSON.parse(JSON.stringify(layer)),
+    x: layer.x - bounds.x,
+    y: layer.y - bounds.y
+  }));
+  const usedClassNames = new Set();
+  const classNames = new Map();
+  layers.forEach((layer, index) => {
+    let className = slugifyClassName(layer.name || layer.type, 'layer');
+    if (usedClassNames.has(className)) className = `${className}-${index + 1}`;
+    usedClassNames.add(className);
+    classNames.set(layer.id, className);
+  });
+  const html = `<section class="${sectionClass}" data-craft-selection="${escapeAttr(selectionName)}">
+${layers.map(layer => `  ${designElementToCodeHTML(layer, classNames.get(layer.id))}`).join('\n')}
+</section>`;
+  const css = `.${sectionClass} {
+  position: relative;
+  width: ${Math.max(1, Math.round(bounds.w))}px;
+  height: ${Math.max(1, Math.round(bounds.h))}px;
+  background: ${frame.bg || '#ffffff'};
+}
+
+${layers.map(layer => `.${sectionClass} .${classNames.get(layer.id)} {\n  ${getCodeCSSDeclarationsForElement(layer).join('\n  ')}\n}`).join('\n\n')}
+`;
+  const js = `window.${runtimeName} = ${JSON.stringify(layers.map(layer => ({
+    id: layer.id,
+    name: layer.name || layer.type,
+    type: layer.type,
+    className: classNames.get(layer.id),
+    componentName: layer.componentName || null
+  })), null, 2)};`;
+  return {name: selectionName, html, css, js, sectionClass};
+}
+
+function buildSelectionBundleText(bundle) {
+  return [
+    `/* ${bundle.sectionClass}.html */`,
+    bundle.html,
+    '',
+    `/* ${bundle.sectionClass}.css */`,
+    bundle.css,
+    '',
+    `/* ${bundle.sectionClass}.js */`,
+    bundle.js
+  ].join('\n');
+}
+
+async function copySelectionCodeBundle() {
+  const bundle = buildSelectionSyncBundle();
+  if (!bundle) return;
+  await copyTextToClipboard(buildSelectionBundleText(bundle), `${bundle.name} bundle copied`);
+}
+
+function appendSnippetToHTMLDocument(source, snippet) {
+  const content = String(source || '');
+  if (/<\/body>/i.test(content)) return content.replace(/<\/body>/i, `\n${snippet}\n</body>`);
+  if (/<\/html>/i.test(content)) return content.replace(/<\/html>/i, `\n<body>\n${snippet}\n</body>\n</html>`);
+  return `${content.trim()}\n\n${snippet}\n`;
+}
+
+function appendSelectionBundleToCode() {
+  const bundle = buildSelectionSyncBundle();
+  if (!bundle) return;
+  state.codeFiles.html = appendSnippetToHTMLDocument(state.codeFiles.html || '', `<!-- ${bundle.name} -->\n${bundle.html}`);
+  state.codeFiles.css = `${String(state.codeFiles.css || '').trim()}\n\n/* ${bundle.name} */\n${bundle.css}`.trim();
+  state.codeFiles.js = `${String(state.codeFiles.js || '').trim()}\n\n// ${bundle.name}\n${bundle.js}`.trim();
+  loadCodeFile(state.activeCodeFile);
+  refreshPreview();
+  queueAutosave();
+  notify(`${bundle.name} appended to code files`, 'success');
+}
+
+function downloadDesignTokensJSON() {
+  const frame = getActiveFrameRecord() || state.frames[0];
+  if (!frame) return;
+  const frameEls = state.elements.filter(item => item.frameId === frame.id);
+  const tokens = buildTokenJS(collectDesignTokens(frame, frameEls));
+  downloadTextFile('craft-design-tokens.json', JSON.stringify(tokens, null, 2), 'application/json');
+  notify('Design tokens exported', 'success');
+}
+
 function buildCodeBundleText() {
   return [
     '/* index.html */',
@@ -3691,29 +3878,59 @@ function buildCodeBundleText() {
   ].join('\n');
 }
 
-async function copyCodeBundleToClipboard() {
-  const bundle = buildCodeBundleText();
+async function copyTextToClipboard(text, successMessage = 'Copied to clipboard') {
   try {
-    await navigator.clipboard.writeText(bundle);
-    notify('Code bundle copied', 'success');
+    await navigator.clipboard.writeText(text);
+    notify(successMessage, 'success');
+    return true;
   } catch (_) {
     const ta = document.createElement('textarea');
-    ta.value = bundle;
+    ta.value = text;
     document.body.appendChild(ta);
     ta.select();
     document.execCommand('copy');
     ta.remove();
-    notify('Code bundle copied', 'success');
+    notify(successMessage, 'success');
+    return true;
   }
 }
 
-function downloadCodeBundle() {
-  const blob = new Blob([buildCodeBundleText()], {type:'text/plain'});
+function downloadTextFile(filename, text, mime = 'text/plain') {
+  const blob = new Blob([text], {type: mime});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'craft-code-bundle.txt';
+  a.download = filename;
   a.click();
+}
+
+function getCodeFileMeta(file = state.activeCodeFile) {
+  const names = {html: 'index.html', css: 'style.css', js: 'script.js'};
+  const mime = {html: 'text/html', css: 'text/css', js: 'text/javascript'};
+  return {
+    file,
+    filename: names[file] || `${file}.txt`,
+    mime: mime[file] || 'text/plain'
+  };
+}
+
+async function copyCodeBundleToClipboard() {
+  await copyTextToClipboard(buildCodeBundleText(), 'Code bundle copied');
+}
+
+function downloadCodeBundle() {
+  downloadTextFile('craft-code-bundle.txt', buildCodeBundleText(), 'text/plain');
   notify('Saved code bundle', 'success');
+}
+
+async function copyActiveCodeFile() {
+  const meta = getCodeFileMeta();
+  await copyTextToClipboard(state.codeFiles[meta.file] || '', `${meta.filename} copied`);
+}
+
+function downloadActiveCodeFile() {
+  const meta = getCodeFileMeta();
+  downloadTextFile(meta.filename, state.codeFiles[meta.file] || '', meta.mime);
+  notify(`Saved ${meta.filename}`, 'success');
 }
 
 function editSelectedText() {
@@ -3790,13 +4007,19 @@ async function importProjectJSON(file) {
   state.panY = Number.isFinite(data.panY) ? data.panY : state.panY;
   state.gridOn = !!data.gridOn;
   state.rulersOn = !!data.rulersOn;
+  state.snapOn = data.snapOn !== undefined ? !!data.snapOn : state.snapOn;
   state.previewMode = data.previewMode || state.previewMode;
   state.previewDevice = data.previewDevice || state.previewDevice;
+  state.previewInspect = !!data.previewInspect;
   state.assetSearch = data.assetSearch || '';
+  state.customComponents = Array.isArray(data.customComponents) ? data.customComponents : state.customComponents;
+  state.layoutGap = Number.isFinite(data.layoutGap) ? Math.max(0, data.layoutGap) : state.layoutGap;
   state.selected = [];
   pushHistory();
   render(); renderLayers(); renderProps();
   loadCodeFile(state.activeCodeFile);
+  updateSnapToggleUI();
+  updatePreviewInspectUI();
   notify('Project imported');
 }
 
@@ -3976,13 +4199,113 @@ function getSelectedEls() {
   return state.elements.filter(e => state.selected.includes(e.id));
 }
 
-function alignSelected(mode) {
-  const sel = getSelectedEls();
-  if (sel.length < 2) { notify('Select at least 2 layers', 'warn'); return; }
+function getSelectionBounds(sel = getSelectedEls()) {
+  if (!sel.length) return null;
   const minX = Math.min(...sel.map(e => e.x));
   const minY = Math.min(...sel.map(e => e.y));
   const maxR = Math.max(...sel.map(e => e.x + e.w));
   const maxB = Math.max(...sel.map(e => e.y + e.h));
+  return {x: minX, y: minY, w: maxR - minX, h: maxB - minY, right: maxR, bottom: maxB};
+}
+
+function getSelectionFrameRecord(sel = getSelectedEls()) {
+  if (!sel.length) return null;
+  const frameIds = [...new Set(sel.map(item => item.frameId))];
+  if (frameIds.length !== 1) return null;
+  return state.frames.find(frame => frame.id === frameIds[0]) || null;
+}
+
+function setLayoutGap(value) {
+  state.layoutGap = Math.max(0, Math.round(Number(value) || 0));
+  queueAutosave();
+}
+
+function saveSelectionAsComponent() {
+  const sel = getSelectedEls();
+  if (!sel.length) {
+    notify('Select one or more layers first', 'warn');
+    return;
+  }
+  const frame = getSelectionFrameRecord(sel);
+  if (!frame) {
+    notify('Components must come from one frame', 'warn');
+    return;
+  }
+  const bounds = getSelectionBounds(sel);
+  const defaultName = sel.length === 1 ? `${sel[0].name || sel[0].type} Component` : `Component ${state.customComponents.length + 1}`;
+  const nextName = prompt('Component name', defaultName);
+  if (nextName === null) return;
+  const cleaned = nextName.trim();
+  if (!cleaned) {
+    notify('Component name cannot be empty', 'warn');
+    return;
+  }
+  const componentId = 'cmp' + (++state.nextId);
+  state.customComponents.unshift({
+    id: componentId,
+    name: cleaned,
+    w: Math.max(1, Math.round(bounds.w)),
+    h: Math.max(1, Math.round(bounds.h)),
+    createdAt: new Date().toISOString(),
+    layers: sel.map(layer => ({
+      ...JSON.parse(JSON.stringify(layer)),
+      x: layer.x - bounds.x,
+      y: layer.y - bounds.y,
+      frameId: null
+    }))
+  });
+  queueAutosave();
+  if (document.getElementById('left-panel-body')?.dataset.tab === 'assets') renderAssetLibrary();
+  notify(`Saved ${cleaned} to My Components`, 'success');
+}
+
+function removeCustomComponent(id) {
+  const component = state.customComponents.find(item => item.id === id);
+  if (!component) return;
+  state.customComponents = state.customComponents.filter(item => item.id !== id);
+  queueAutosave();
+  if (document.getElementById('left-panel-body')?.dataset.tab === 'assets') renderAssetLibrary();
+  notify(`Removed ${component.name}`, 'success');
+}
+
+function insertCustomComponent(id) {
+  const component = state.customComponents.find(item => item.id === id);
+  if (!component) return;
+  const frame = getActiveFrameRecord() || state.frames[0];
+  if (!frame) return;
+  const bounds = {w: Math.max(1, component.w || 1), h: Math.max(1, component.h || 1)};
+  const pos = findFreeTextPosition(frame.id, Math.round(frame.w * 0.08), Math.round(frame.h * 0.12), bounds.w, bounds.h);
+  const insertedIds = [];
+  component.layers.forEach(layer => {
+    const newId = 'el' + (++state.nextId);
+    state.elements.push({
+      ...JSON.parse(JSON.stringify(layer)),
+      id: newId,
+      frameId: frame.id,
+      x: Math.max(0, Math.round(pos.x + (layer.x || 0))),
+      y: Math.max(0, Math.round(pos.y + (layer.y || 0))),
+      componentId: component.id,
+      componentName: component.name
+    });
+    insertedIds.push(newId);
+  });
+  state.activeFrame = frame.id;
+  state.selected = insertedIds;
+  pushHistory();
+  render();
+  renderLayers();
+  renderProps();
+  notify(`${component.name} added`, 'success');
+}
+
+function alignSelected(mode) {
+  const sel = getSelectedEls();
+  if (sel.length < 2) { notify('Select at least 2 layers', 'warn'); return; }
+  const bounds = getSelectionBounds(sel);
+  const minX = bounds.x;
+  const minY = bounds.y;
+  const maxR = bounds.right;
+  const maxB = bounds.bottom;
   const centerX = (minX + maxR) / 2;
   const centerY = (minY + maxB) / 2;
 
@@ -4023,6 +4346,25 @@ function distributeSelected(axis) {
   render(); renderProps();
 }
 
+function tidySelected(axis, gap = state.layoutGap) {
+  const sel = getSelectedEls();
+  if (sel.length < 2) { notify('Select at least 2 layers', 'warn'); return; }
+  const items = [...sel].sort((a, b) => axis === 'x' ? a.x - b.x : a.y - b.y);
+  let cursor = axis === 'x' ? items[0].x : items[0].y;
+  items.forEach((item, index) => {
+    if (index === 0) {
+      cursor += (axis === 'x' ? item.w : item.h) + gap;
+      return;
+    }
+    if (axis === 'x') item.x = Math.round(cursor);
+    else item.y = Math.round(cursor);
+    cursor += (axis === 'x' ? item.w : item.h) + gap;
+  });
+  pushHistory();
+  render(); renderProps();
+  notify(`Tidy ${axis === 'x' ? 'horizontal' : 'vertical'} spacing applied`, 'success');
+}
+
 function matchSelectedSize(dim) {
   const sel = getSelectedEls();
   if (sel.length < 2) { notify('Select at least 2 layers', 'warn'); return; }
@@ -4033,6 +4375,32 @@ function matchSelectedSize(dim) {
   });
   pushHistory();
   render(); renderProps();
+}
+
+function centerSelectedInFrame(axis = 'both') {
+  const sel = getSelectedEls();
+  if (!sel.length) {
+    notify('Select one or more layers first', 'warn');
+    return;
+  }
+  const frame = getSelectionFrameRecord(sel);
+  if (!frame) {
+    notify('Selection must be inside one frame', 'warn');
+    return;
+  }
+  const bounds = getSelectionBounds(sel);
+  const deltaX = Math.round((frame.w - bounds.w) / 2 - bounds.x);
+  const deltaY = Math.round((frame.h - bounds.h) / 2 - bounds.y);
+  sel.forEach(item => {
+    const nextX = axis === 'y' ? item.x : item.x + deltaX;
+    const nextY = axis === 'x' ? item.y : item.y + deltaY;
+    const clamped = clampMoveToFrame(frame, item, nextX, nextY);
+    item.x = clamped.x;
+    item.y = clamped.y;
+  });
+  pushHistory();
+  render(); renderProps();
+  notify('Centered selection in frame', 'success');
 }
 
 function addComponent(type) {
@@ -4357,11 +4725,51 @@ function addComponent(type) {
       {id:'el'+id4,type:'text',name:'Results A',x:270,y:310,w:620,h:34,text:'Craft IDE preview inspect for linked layers',fill:'#111827',fontSize:24,fontWeight:'700',textAlign:'left',frameId},
       {id:'el'+id5,type:'text',name:'Results B',x:270,y:390,w:620,h:34,text:'Exporting reusable code bundles from design',fill:'#111827',fontSize:24,fontWeight:'700',textAlign:'left',frameId},
       {id:'el'+id6,type:'text',name:'Results Meta',x:270,y:348,w:560,h:84,text:'Documentation · Updated today\nGuides · 5 minutes read',fill:'#64748b',fontSize:16,fontWeight:'500',textAlign:'left',frameId}
+    ],
+    featureSpotlight: [
+      {id:'el'+id1,type:'rect',name:'Spotlight Card',x:180,y:130,w:920,h:520,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:28,opacity:1,frameId},
+      {id:'el'+id2,type:'rect',name:'Spotlight Media',x:640,y:190,w:360,h:340,fill:'#dbeafe',stroke:'none',strokeW:0,r:24,opacity:1,frameId},
+      {id:'el'+id3,type:'text',name:'Spotlight Eyebrow',x:260,y:212,w:160,h:18,text:'NEW WORKFLOW',fill:'#2563eb',fontSize:13,fontWeight:'800',textAlign:'left',letterSpacing:1.1,frameId},
+      {id:'el'+id4,type:'text',name:'Spotlight Heading',x:260,y:252,w:300,h:108,text:'Ship cleaner design-to-code handoffs',fill:'#0f172a',fontSize:40,fontWeight:'800',textAlign:'left',lineHeight:1.08,frameId},
+      {id:'el'+id5,type:'text',name:'Spotlight Body',x:260,y:388,w:300,h:90,text:'Turn polished layouts into reusable code snippets, tokens, and linked preview layers with less cleanup.',fill:'#475569',fontSize:18,fontWeight:'500',textAlign:'left',lineHeight:1.5,frameId},
+      {id:'el'+id6,type:'rect',name:'Spotlight CTA',x:260,y:516,w:170,h:50,fill:'#111827',stroke:'none',strokeW:0,r:14,opacity:1,frameId}
+    ],
+    teamGrid: [
+      {id:'el'+id1,type:'text',name:'Team Heading',x:240,y:120,w:520,h:42,text:'Meet the product squad',fill:'#0f172a',fontSize:36,fontWeight:'800',textAlign:'left',frameId},
+      {id:'el'+id2,type:'rect',name:'Member Card A',x:240,y:210,w:260,h:250,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:24,opacity:1,frameId},
+      {id:'el'+id3,type:'rect',name:'Member Card B',x:530,y:210,w:260,h:250,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:24,opacity:1,frameId},
+      {id:'el'+id4,type:'rect',name:'Member Card C',x:820,y:210,w:260,h:250,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:24,opacity:1,frameId},
+      {id:'el'+id5,type:'ellipse',name:'Member Avatar A',x:330,y:258,w:80,h:80,fill:'#cbd5e1',stroke:'none',strokeW:0,opacity:1,frameId},
+      {id:'el'+id6,type:'text',name:'Member Name A',x:286,y:360,w:170,h:28,text:'Jordan Lee',fill:'#0f172a',fontSize:22,fontWeight:'700',textAlign:'center',frameId}
+    ],
+    docEditor: [
+      {id:'el'+id1,type:'rect',name:'Editor Shell',x:180,y:120,w:920,h:560,fill:'#ffffff',stroke:'#dbe2ea',strokeW:1,r:22,opacity:1,frameId},
+      {id:'el'+id2,type:'rect',name:'Editor Sidebar',x:180,y:120,w:220,h:560,fill:'#f8fafc',stroke:'none',strokeW:0,r:22,opacity:1,frameId},
+      {id:'el'+id3,type:'rect',name:'Editor Toolbar',x:400,y:120,w:700,h:58,fill:'#ffffff',stroke:'#eef2f7',strokeW:1,r:22,opacity:1,frameId},
+      {id:'el'+id4,type:'text',name:'Editor Title',x:440,y:214,w:360,h:34,text:'Release Notes Draft',fill:'#0f172a',fontSize:28,fontWeight:'800',textAlign:'left',frameId},
+      {id:'el'+id5,type:'text',name:'Editor Body A',x:440,y:286,w:560,h:30,text:'Craft IDE now ships reusable components and selection bundles.',fill:'#334155',fontSize:18,fontWeight:'500',textAlign:'left',frameId},
+      {id:'el'+id6,type:'text',name:'Editor Body B',x:440,y:334,w:560,h:30,text:'Design tweaks can flow back into code with less manual rewriting.',fill:'#334155',fontSize:18,fontWeight:'500',textAlign:'left',frameId}
+    ],
+    settingsPanel: [
+      {id:'el'+id1,type:'rect',name:'Settings Shell',x:280,y:140,w:720,h:480,fill:'#ffffff',stroke:'#e5e7eb',strokeW:1,r:24,opacity:1,frameId},
+      {id:'el'+id2,type:'text',name:'Settings Title',x:340,y:194,w:260,h:32,text:'Workspace Settings',fill:'#0f172a',fontSize:28,fontWeight:'800',textAlign:'left',frameId},
+      {id:'el'+id3,type:'text',name:'Settings Label A',x:340,y:278,w:180,h:22,text:'Snap Guides',fill:'#334155',fontSize:17,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id4,type:'rect',name:'Settings Toggle A',x:840,y:270,w:90,h:34,fill:'#111827',stroke:'none',strokeW:0,r:999,opacity:1,frameId},
+      {id:'el'+id5,type:'text',name:'Settings Label B',x:340,y:366,w:220,h:22,text:'Linked Preview Inspect',fill:'#334155',fontSize:17,fontWeight:'700',textAlign:'left',frameId},
+      {id:'el'+id6,type:'rect',name:'Settings Toggle B',x:840,y:358,w:90,h:34,fill:'#cbd5e1',stroke:'none',strokeW:0,r:999,opacity:1,frameId}
+    ],
+    analyticsHero: [
+      {id:'el'+id1,type:'rect',name:'Analytics Shell',x:180,y:120,w:920,h:540,fill:'#0f172a',stroke:'none',strokeW:0,r:28,opacity:1,frameId},
+      {id:'el'+id2,type:'text',name:'Analytics Heading',x:250,y:208,w:420,h:88,text:'See design velocity in real time',fill:'#ffffff',fontSize:42,fontWeight:'800',textAlign:'left',lineHeight:1.08,frameId},
+      {id:'el'+id3,type:'text',name:'Analytics Body',x:250,y:326,w:360,h:62,text:'Track tokens, linked layers, exports, and reusable components from one workspace.',fill:'#94a3b8',fontSize:18,fontWeight:'500',textAlign:'left',lineHeight:1.5,frameId},
+      {id:'el'+id4,type:'rect',name:'Analytics Card A',x:710,y:186,w:280,h:150,fill:'#111827',stroke:'#1f2937',strokeW:1,r:20,opacity:1,frameId},
+      {id:'el'+id5,type:'text',name:'Analytics Metric',x:760,y:238,w:160,h:54,text:'98%',fill:'#ffffff',fontSize:46,fontWeight:'800',textAlign:'left',frameId},
+      {id:'el'+id6,type:'text',name:'Analytics Label',x:760,y:300,w:160,h:20,text:'Sync success rate',fill:'#94a3b8',fontSize:15,fontWeight:'700',textAlign:'left',frameId}
     ]
   };
   const els = comps[type];
   if (!els) return;
-  els.forEach(el => state.elements.push(el));
+  els.forEach(el => state.elements.push({...el, componentName: type}));
   state.selected = els.map(e => e.id);
   pushHistory(); render(); renderLayers(); renderProps();
   notify(`${type.charAt(0).toUpperCase()+type.slice(1)} component added`);
@@ -5531,7 +5939,7 @@ function exportProject() {
 function exportProjectJSON() {
   const payload = {
     app: 'Craft IDE',
-    version: 5,
+    version: 6,
     exportedAt: new Date().toISOString(),
     state: {
       elements: state.elements,
@@ -5547,9 +5955,13 @@ function exportProjectJSON() {
       panY: state.panY,
       gridOn: state.gridOn,
       rulersOn: state.rulersOn,
+      snapOn: state.snapOn,
       previewMode: state.previewMode,
       previewDevice: state.previewDevice,
-      assetSearch: state.assetSearch
+      previewInspect: state.previewInspect,
+      assetSearch: state.assetSearch,
+      customComponents: state.customComponents,
+      layoutGap: state.layoutGap
     }
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
