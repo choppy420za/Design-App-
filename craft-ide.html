@@ -3076,7 +3076,7 @@ function renderLayers() {
   [...getElementsForCurrentPage()].reverse().forEach(el => {
     const sel = state.selected.includes(el.id);
     const group = el.groupId ? getGroupById(el.groupId) : null;
-    html += `<div class="layer-item ${sel?'selected':''}" onclick="selectFromLayer('${el.id}')" data-id="${el.id}">
+    html += `<div class="layer-item ${sel?'selected':''}" onclick="selectFromLayer(event,'${el.id}')" data-id="${el.id}">
       <span class="layer-icon" style="font-size:11px">${icons[el.type]||'□'}</span>
       <span class="layer-name">${el.name||el.type}${group ? ` · ${group.name}` : ''} <span style="opacity:.5;font-size:11px;margin-left:6px">[${el.frameId||''}]</span></span>
       <span class="layer-vis" onclick="toggleLock(event,'${el.id}')" title="Lock">${el.locked?'🔒':'🔓'}</span>
@@ -3086,8 +3086,34 @@ function renderLayers() {
   body.innerHTML = html || '<div style="padding:12px;color:var(--txt2);font-size:12px">No elements yet. Draw something!</div>';
 }
 
-function selectFromLayer(id) {
-  state.selected = [id];
+function selectFromLayer(eOrId, maybeId) {
+  let e = null, id = null;
+  if (typeof maybeId === 'undefined') {
+    id = eOrId;
+  } else {
+    e = eOrId; id = maybeId;
+  }
+  // Modifier-aware selection: Ctrl/Meta toggles, Shift extends range
+  if (e && (e.metaKey || e.ctrlKey)) {
+    if (state.selected.includes(id)) state.selected = state.selected.filter(i => i !== id);
+    else state.selected.push(id);
+  } else if (e && e.shiftKey) {
+    // range selection between last selected and this one
+    const elems = getElementsForCurrentPage();
+    const ids = elems.map(el => el.id);
+    const last = state.selected.length ? state.selected[state.selected.length - 1] : null;
+    if (last && ids.includes(last)) {
+      const i1 = ids.indexOf(last);
+      const i2 = ids.indexOf(id);
+      const a = Math.min(i1, i2), b = Math.max(i1, i2);
+      const range = ids.slice(a, b + 1);
+      state.selected = Array.from(new Set([...state.selected, ...range]));
+    } else {
+      state.selected = [id];
+    }
+  } else {
+    state.selected = [id];
+  }
   render(); renderProps();
 }
 
@@ -5753,7 +5779,7 @@ function renderMinimap() {
     if (isOpen) {
       children.forEach(el => {
         const sel = state.selected.includes(el.id);
-        html += `<div class="layer-item ${sel?'selected':''}" draggable="true" ondragstart="layerDragStart(event,'${el.id}')" onclick="selectFromLayer('${el.id}')" data-id="${el.id}">
+        html += `<div class="layer-item ${sel?'selected':''}" draggable="true" ondragstart="layerDragStart(event,'${el.id}')" onclick="selectFromLayer(event,'${el.id}')" data-id="${el.id}">
           <span class="layer-icon" style="font-size:11px">${icons[el.type]||'□'}</span>
           <span class="layer-name">${el.name||el.type}</span>
           <span class="layer-vis" onclick="toggleLock(event,'${el.id}')" title="Lock">${el.locked?'🔒':'🔓'}</span>
@@ -5766,7 +5792,7 @@ function renderMinimap() {
   // Render ungrouped layers
   ungrouped.reverse().forEach(el => {
     const sel = state.selected.includes(el.id);
-    html += `<div class="layer-item ${sel?'selected':''}" draggable="true" ondragstart="layerDragStart(event,'${el.id}')" onclick="selectFromLayer('${el.id}')" data-id="${el.id}">
+    html += `<div class="layer-item ${sel?'selected':''}" draggable="true" ondragstart="layerDragStart(event,'${el.id}')" onclick="selectFromLayer(event,'${el.id}')" data-id="${el.id}">
       <span class="layer-icon" style="font-size:11px">${icons[el.type]||'□'}</span>
       <span class="layer-name">${el.name||el.type}</span>
       <span class="layer-vis" onclick="toggleLock(event,'${el.id}')" title="Lock">${el.locked?'🔒':'🔓'}</span>
