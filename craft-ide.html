@@ -740,6 +740,12 @@ kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;bo
       <button class="tool-btn active" onclick="toggleSnap()" id="snap-btn" data-tooltip="Snap Guides">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5v4"/><path d="M8 10.5v4"/><path d="M1.5 8h4"/><path d="M10.5 8h4"/><circle cx="8" cy="8" r="2.3"/></svg>
       </button>
+      <select id="grid-step-select" onchange="setGridStep(+this.value)" style="margin-left:6px;font-size:12px;padding:6px;border-radius:6px">
+        <option value="4">4px</option>
+        <option value="8" selected>8px</option>
+        <option value="16">16px</option>
+        <option value="32">32px</option>
+      </select>
       <button class="tool-btn" onclick="toggleRulers()" data-tooltip="Rulers">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="5" width="14" height="6" rx="1"/><line x1="4" y1="5" x2="4" y2="8"/><line x1="7" y1="5" x2="7" y2="7"/><line x1="10" y1="5" x2="10" y2="8"/><line x1="13" y1="5" x2="13" y2="7"/></svg>
       </button>
@@ -792,7 +798,8 @@ kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;bo
       <div class="panel-tabs">
         <div class="ptab active" onclick="switchLeftTab('layers',this)">Layers</div>
         <div class="ptab" onclick="switchLeftTab('assets',this)">Assets</div>
-        <div class="ptab" onclick="switchLeftTab('pages',this)">Pages</div>
+          <div class="ptab" onclick="switchLeftTab('pages',this)">Pages</div>
+          <div class="ptab" onclick="switchLeftTab('frames',this)">Frames</div>
       </div>
       <div class="panel-content" id="left-panel-body"></div>
     </div>
@@ -1106,6 +1113,7 @@ const state = {
   activeFrame: 'frame1',
   history: [], historyIdx: -1,
   gridOn: false, rulersOn: false,
+  gridStep: 8,
   snapOn: true,
   theme: 'dark',
   nextId: 100,
@@ -2744,6 +2752,32 @@ function ungroupSelected() {
   notify('Ungrouped selection', 'success');
 }
 
+function toggleGroupOpen(groupId) {
+  state.groupOpen = state.groupOpen || {};
+  state.groupOpen[groupId] = !state.groupOpen[groupId];
+  renderLayers();
+}
+
+function layerDragStart(e, id) {
+  try { e.dataTransfer.setData('text/plain', `layer:${id}`); e.dataTransfer.effectAllowed = 'move'; } catch(_){}
+}
+
+function groupDrop(e, groupId) {
+  e.preventDefault();
+  const raw = e.dataTransfer.getData('text/plain') || '';
+  if (!raw) return;
+  const m = raw.match(/^layer:(.+)$/);
+  if (!m) return;
+  const id = m[1];
+  const el = state.elements.find(x=>x.id===id);
+  if (!el) return;
+  if (isLocked(el)) { notify('Layer is locked', 'warn'); return; }
+  el.groupId = groupId;
+  if (!state.groups.find(g=>g.id===groupId)) state.groups.push({id:groupId,name:'Group'});
+  pushHistory(); render(); renderLayers(); renderProps(); queueAutosave();
+  notify('Layer added to group');
+}
+
 function moveSelectedToFrame(frameId) {
   if (!frameId) return;
   const frame = state.frames.find(f => f.id === frameId);
@@ -2758,7 +2792,57 @@ function moveSelectedToFrame(frameId) {
   state.activeFrame = frameId;
   pushHistory(); render(); renderLayers(); renderProps(); queueAutosave();
   notify(`Moved ${sel.length} layer(s) to frame ${frame.name||frame.id}`);
+  // show alignment guides at frame center
+  showSnapGuides({x: frame.x + Math.round(frame.w/2), y: frame.y + Math.round(frame.h/2), label: 'Frame'});
 }
+
+// ═══════════════════════════════════════════════════════════
+// FRAMES PANEL
+// ═══════════════════════════════════════════════════════════
+function renderFramesPanel() {
+  const body = document.getElementById('left-panel-body');
+  if (!body) return;
+  const frames = getFramesForCurrentPage();
+  let html = `<div style="padding:8px;display:flex;gap:6px"><button class="tbtn" onclick="createFrame()">+ Frame</button><button class="tbtn" onclick="addFrameFromPreset()">+ Preset</button></div>`;
+  html += `<div style="padding:8px">`;
+  frames.forEach((f, idx) => {
+    html += `<div class="frame-row" style="display:flex;align-items:center;gap:6px;padding:6px;border-radius:6px;border:1px solid var(--border);margin-bottom:6px">
+      <div style="flex:1" onclick="setActiveFrame('${f.id}')">${f.name||f.id}</div>
+      <button class="tbtn" onclick="renameFrame('${f.id}')">Rename</button>
+      <button class="tbtn" onclick="moveFrameUp('${f.id}')">↑</button>
+      <button class="tbtn" onclick="moveFrameDown('${f.id}')">↓</button>
+      <button class="tbtn" onclick="deleteFrame('${f.id}')" style="color:var(--red)">Delete</button>
+    </div>`;
+  });
+  html += `</div>`;
+  body.innerHTML = html;
+}
+
+function createFrame() {
+  const id = 'frame' + (++state.nextId);
+  const pageId = getCurrentPageId();
+  const name = `Frame ${state.frames.filter(f=>f.pageId===pageId).length+1}`;
+  state.frames.push({id, pageId, name, x:0,y:0,w:800,h:600,bg:'#fff'});
+  pushHistory(); render(); renderLayers(); renderFramesPanel(); queueAutosave();
+}
+
+function renameFrame(id) {
+  const f = state.frames.find(fr=>fr.id===id); if(!f) return; const n = prompt('Rename frame', f.name||f.id); if (!n) return; f.name = n; pushHistory(); renderFramesPanel(); renderLayers(); queueAutosave();
+}
+
+function moveFrameUp(id) {
+  const idx = state.frames.findIndex(f=>f.id===id); if (idx<=0) return; const tmp = state.frames[idx-1]; state.frames[idx-1]=state.frames[idx]; state.frames[idx]=tmp; pushHistory(); renderFramesPanel(); queueAutosave();
+}
+
+function moveFrameDown(id) {
+  const idx = state.frames.findIndex(f=>f.id===id); if (idx<0 || idx>=state.frames.length-1) return; const tmp = state.frames[idx+1]; state.frames[idx+1]=state.frames[idx]; state.frames[idx]=tmp; pushHistory(); renderFramesPanel(); queueAutosave();
+}
+
+function deleteFrame(id) {
+  if (!confirm('Delete this frame and its layers?')) return; const frameIds = new Set([id]); state.frames = state.frames.filter(f=>f.id!==id); state.elements = state.elements.filter(e=>e.frameId!==id); if (state.activeFrame===id) state.activeFrame = state.frames[0]?.id || null; pushHistory(); render(); renderLayers(); renderProps(); renderFramesPanel(); queueAutosave();
+}
+
+function setActiveFrame(id) { state.activeFrame = id; render(); renderLayers(); renderProps(); notify('Active frame set'); }
 
 function copyStyleSelected() {
   if (state.selected.length !== 1) { notify('Select one layer to copy style', 'warn'); return; }
@@ -3409,6 +3493,8 @@ function switchLeftTab(tab, el) {
     renderAssetLibrary();
   } else if (tab === 'pages') {
     renderPagesPanel();
+  } else if (tab === 'frames') {
+    renderFramesPanel();
   }
 }
 
@@ -3464,7 +3550,7 @@ function insertIconAssetAt(key, frameId, x, y) {
   const el = {id, type:'svg', name:icon.label||'Icon', svgMarkup:`<svg viewBox="${icon.viewBox}" xmlns="http://www.w3.org/2000/svg">${icon.content}</svg>`, frameId, x: x||40, y: y||40, w:48, h:48, stroke:'#111827', strokeW:1.5};
   // Snap to grid if enabled
   if (state.snapOn) {
-    const step = 8;
+    const step = state.gridStep || 8;
     el.x = Math.round(el.x / step) * step;
     el.y = Math.round(el.y / step) * step;
   }
@@ -3483,7 +3569,7 @@ function insertTextPresetAt(key, frameId, x, y) {
   const options = {frameId, x, y, text:def.text, fontSize:def.fontSize, fontWeight:def.fontWeight, w:def.w, h:def.h, textAlign:def.textAlign, fill:def.fill, autoEdit:true};
   // apply snap if enabled
   if (state.snapOn && Number.isFinite(options.x) && Number.isFinite(options.y)) {
-    const step = 8;
+    const step = state.gridStep || 8;
     options.x = Math.round(options.x / step) * step;
     options.y = Math.round(options.y / step) * step;
   }
@@ -3497,7 +3583,7 @@ function insertImageFromAssetAt(id, frameId, x, y) {
   const nid = 'el' + (++state.nextId);
   const ne = {...src, id: nid, frameId, x: x||20, y: y||20};
   if (state.snapOn) {
-    const step = 8;
+    const step = state.gridStep || 8;
     ne.x = Math.round(ne.x / step) * step;
     ne.y = Math.round(ne.y / step) * step;
   }
@@ -5141,6 +5227,14 @@ function toggleGrid() {
   queueAutosave();
 }
 
+function setGridStep(step) {
+  state.gridStep = Number(step) || 8;
+  const overlay = document.getElementById('grid-overlay');
+  if (overlay) overlay.style.backgroundSize = `${state.gridStep}px ${state.gridStep}px`;
+  queueAutosave();
+  notify(`Grid step set to ${state.gridStep}px`);
+}
+
 function toggleRulers() {
   state.rulersOn = !state.rulersOn;
   const rh = document.getElementById('ruler-h');
@@ -5623,24 +5717,62 @@ function handleMinimapClick(e) {
 function renderMinimap() {
   const canvas = document.getElementById('minimap-canvas');
   const mm = document.getElementById('vsc-minimap');
-  if (!canvas || !mm) return;
-  const w = mm.clientWidth;
-  const h = mm.clientHeight;
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  const code = state.codeFiles[state.activeCodeFile] || '';
-  const lines = code.split('\n');
-  ctx.fillStyle = '#1e1e1e';
-  ctx.fillRect(0, 0, w, h);
-  const lh = Math.max(1, h / Math.max(lines.length, 1));
-  lines.forEach((line, i) => {
-    const brightness = Math.min(line.trim().length / 80, 1);
-    ctx.fillStyle = `rgba(100,140,200,${brightness * 0.35})`;
-    ctx.fillRect(0, i * lh, w, Math.max(1, lh - 0.5));
+  // Controls: Group / Ungroup / Move to Frame
+  const frames = getFramesForCurrentPage();
+  const frameOptions = frames.map(f=>`<option value="${f.id}" ${f.id===state.activeFrame?'selected':''}>${f.name||f.id}</option>`).join('');
+  let html = `<div style="padding:6px 8px;display:flex;gap:6px;align-items:center">
+    <button class="tbtn" onclick="groupSelected()" style="font-size:11px;padding:6px">Group</button>
+    <button class="tbtn" onclick="ungroupSelected()" style="font-size:11px;padding:6px">Ungroup</button>
+    <select onchange="moveSelectedToFrame(this.value)" style="font-size:11px;padding:6px;border-radius:6px">${frameOptions}</select>
+  </div>`;
+
+  const icons = {rect:'▭',ellipse:'◯',text:'T',line:'—',image:'⊟',svg:'◆',frame:'⊡'};
+  // Build grouping
+  const elems = [...getElementsForCurrentPage()];
+  const groupedMap = {};
+  const ungrouped = [];
+  elems.forEach(el => {
+    if (el.groupId) {
+      groupedMap[el.groupId] = groupedMap[el.groupId]||[];
+      groupedMap[el.groupId].push(el);
+    } else {
+      ungrouped.push(el);
+    }
   });
-  // viewport indicator
-  const ed = document.getElementById('code-editor');
+  // Render groups (preserve state.groups ordering)
+  state.groups.forEach(group => {
+    const children = (groupedMap[group.id] || []).slice().reverse();
+    if (!children.length) return;
+    const isOpen = !!state.groupOpen?.[group.id];
+    html += `<div class="group-folder">
+      <div class="group-header" draggable="false" ondragover="event.preventDefault()" ondrop="groupDrop(event,'${group.id}')">
+        <button class="tbtn" onclick="toggleGroupOpen('${group.id}')" style="font-size:11px;padding:6px">${isOpen? '▾' : '▸'}</button>
+        <strong style="margin-left:6px">${group.name}</strong>
+        <span style="margin-left:auto;opacity:.6;font-size:12px">${children.length}</span>
+      </div>`;
+    if (isOpen) {
+      children.forEach(el => {
+        const sel = state.selected.includes(el.id);
+        html += `<div class="layer-item ${sel?'selected':''}" draggable="true" ondragstart="layerDragStart(event,'${el.id}')" onclick="selectFromLayer('${el.id}')" data-id="${el.id}">
+          <span class="layer-icon" style="font-size:11px">${icons[el.type]||'□'}</span>
+          <span class="layer-name">${el.name||el.type}</span>
+          <span class="layer-vis" onclick="toggleLock(event,'${el.id}')" title="Lock">${el.locked?'🔒':'🔓'}</span>
+          <span class="layer-vis" onclick="toggleVis(event,'${el.id}')">👁</span>
+        </div>`;
+      });
+    }
+    html += `</div>`;
+  });
+  // Render ungrouped layers
+  ungrouped.reverse().forEach(el => {
+    const sel = state.selected.includes(el.id);
+    html += `<div class="layer-item ${sel?'selected':''}" draggable="true" ondragstart="layerDragStart(event,'${el.id}')" onclick="selectFromLayer('${el.id}')" data-id="${el.id}">
+      <span class="layer-icon" style="font-size:11px">${icons[el.type]||'□'}</span>
+      <span class="layer-name">${el.name||el.type}</span>
+      <span class="layer-vis" onclick="toggleLock(event,'${el.id}')" title="Lock">${el.locked?'🔒':'🔓'}</span>
+      <span class="layer-vis" onclick="toggleVis(event,'${el.id}')">👁</span>
+    </div>`;
+  });
   if (ed) {
     const scrollFrac = ed.scrollTop / Math.max(1, ed.scrollHeight - ed.clientHeight);
     const viewFrac = ed.clientHeight / Math.max(1, ed.scrollHeight);
@@ -6478,6 +6610,10 @@ document.addEventListener('DOMContentLoaded', () => {
   render();
   if (state.gridOn) document.getElementById('grid-overlay').classList.add('show');
   if (state.gridOn) document.getElementById('grid-btn').classList.add('active');
+  // ensure grid overlay reflects selected step
+  const overlay = document.getElementById('grid-overlay');
+  if (overlay) overlay.style.backgroundSize = `${state.gridStep||8}px ${state.gridStep||8}px`;
+  const sel = document.getElementById('grid-step-select'); if (sel) sel.value = String(state.gridStep||8);
   if (state.rulersOn) {
     document.getElementById('ruler-h').style.display = 'block';
     document.getElementById('ruler-v').style.display = 'block';
