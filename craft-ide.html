@@ -3394,18 +3394,19 @@ function renderAssetLibrary() {
   const body = document.getElementById('left-panel-body');
   if (!body) return;
   const icons = getIconAssetItems();
-  const iconsHtml = icons.map(([label,key])=>`<div class="asset-item" onclick="insertIconAsset('${key}')"><div class="asset-icon">${ICON_LIBRARY[key] ? `<svg viewBox="${ICON_LIBRARY[key].viewBox}" fill="currentColor">${ICON_LIBRARY[key].content}</svg>` : '◼'}</div><div class="asset-label">${label}</div></div>`).join('');
+  const iconsHtml = icons.map(([label,key])=>`<div class="asset-item" draggable="true" ondragstart="assetDragStart(event,'icon','${key}')" onclick="insertIconAsset('${key}')"><div class="asset-icon">${ICON_LIBRARY[key] ? `<svg viewBox="${ICON_LIBRARY[key].viewBox}" fill="currentColor">${ICON_LIBRARY[key].content}</svg>` : '◼'}</div><div class="asset-label">${label}</div></div>`).join('');
 
   const images = state.elements.filter(e=>e.type==='image');
-  const imagesHtml = images.length ? images.map(img=>`<div class="asset-item" onclick="insertImageFromAsset('${img.id}')"><div class="asset-icon">${img.src?`<img src="${img.src}" style="max-width:100%;max-height:40px;object-fit:cover;border-radius:4px">`:'🖼'}</div><div class="asset-label">${img.name||img.id}</div></div>`).join('') : '<div style="padding:12px;color:var(--txt2);font-size:12px">No image assets yet. Import images via the toolbar.</div>';
+  const imagesHtml = images.length ? images.map(img=>`<div class="asset-item" draggable="true" ondragstart="assetDragStart(event,'image','${img.id}')" onclick="insertImageFromAsset('${img.id}')"><div class="asset-icon">${img.src?`<img src="${img.src}" style="max-width:100%;max-height:40px;object-fit:cover;border-radius:4px">`:'🖼'}</div><div class="asset-label">${img.name||img.id}</div></div>`).join('') : '<div style="padding:12px;color:var(--txt2);font-size:12px">No image assets yet. Import images via the toolbar.</div>';
 
   const textPresets = getTextPresetItems();
-  const textHtml = textPresets.map(([label,key])=>`<div class="asset-item" onclick="insertTextPreset('${key}')"><div class="asset-icon">T</div><div class="asset-label">${label}</div></div>`).join('');
+  const textHtml = textPresets.map(([label,key])=>`<div class="asset-item" draggable="true" ondragstart="assetDragStart(event,'textPreset','${key}')" onclick="insertTextPreset('${key}')"><div class="asset-icon">T</div><div class="asset-label">${label}</div></div>`).join('');
 
   body.innerHTML = `
-    <div style="padding:8px"><div style="font-size:11px;color:var(--txt2);margin-bottom:6px;font-weight:600">Icons</div><div class="asset-grid">${iconsHtml}</div></div>
-    <div style="padding:8px"><div style="font-size:11px;color:var(--txt2);margin-bottom:6px;font-weight:600">Text Presets</div><div class="asset-grid">${textHtml}</div></div>
-    <div style="padding:8px"><div style="font-size:11px;color:var(--txt2);margin-bottom:6px;font-weight:600">Images</div><div class="asset-grid">${imagesHtml}</div></div>
+    <div style="padding:8px;display:flex;gap:6px;align-items:center"><input id="asset-search" placeholder="Search assets…" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--txt0)" oninput="filterAssets(this.value)"/></div>
+    <div style="padding:8px"><div style="font-size:11px;color:var(--txt2);margin-bottom:6px;font-weight:600">Icons</div><div class="asset-grid" id="asset-icons">${iconsHtml}</div></div>
+    <div style="padding:8px"><div style="font-size:11px;color:var(--txt2);margin-bottom:6px;font-weight:600">Text Presets</div><div class="asset-grid" id="asset-texts">${textHtml}</div></div>
+    <div style="padding:8px"><div style="font-size:11px;color:var(--txt2);margin-bottom:6px;font-weight:600">Images</div><div class="asset-grid" id="asset-images">${imagesHtml}</div></div>
   `;
 }
 
@@ -3432,6 +3433,55 @@ function insertImageFromAsset(id) {
   const ne = {...src, id: nid, x: Math.min((src.x||0)+20, (getActiveFrameRecord()?.w||200)-10), y: Math.min((src.y||0)+20, (getActiveFrameRecord()?.h||200)-10)};
   state.elements.push(ne);
   state.selected = [nid]; render(); renderLayers(); renderProps(); pushHistory(); queueAutosave();
+}
+
+function insertIconAssetAt(key, frameId, x, y) {
+  const icon = ICON_LIBRARY[key];
+  if (!icon) return;
+  const id = 'el' + (++state.nextId);
+  const el = {id, type:'svg', name:icon.label||'Icon', svgMarkup:`<svg viewBox="${icon.viewBox}" xmlns="http://www.w3.org/2000/svg">${icon.content}</svg>`, frameId, x, y, w:48, h:48, stroke:'#111827', strokeW:1.5};
+  state.elements.push(el);
+  state.selected = [id]; render(); renderLayers(); renderProps(); pushHistory(); queueAutosave();
+}
+
+function insertTextPresetAt(key, frameId, x, y) {
+  const def = TEXT_PRESET_LIBRARY[key];
+  if (!def) return;
+  insertTextLayer({frameId, x, y, text:def.text, fontSize:def.fontSize, fontWeight:def.fontWeight, w:def.w, h:def.h, textAlign:def.textAlign, fill:def.fill});
+}
+
+function insertImageFromAssetAt(id, frameId, x, y) {
+  const src = state.elements.find(e=>e.id===id && e.type==='image');
+  if (!src) return;
+  const nid = 'el' + (++state.nextId);
+  const ne = {...src, id: nid, frameId, x, y};
+  state.elements.push(ne);
+  state.selected = [nid]; render(); renderLayers(); renderProps(); pushHistory(); queueAutosave();
+}
+
+function assetDragStart(e, type, id) {
+  try {
+    e.dataTransfer.setData('application/x-craft-asset', JSON.stringify({type,id}));
+    e.dataTransfer.setData('text/plain', `asset:${type}:${id}`);
+    e.dataTransfer.effectAllowed = 'copy';
+  } catch (_) {}
+}
+
+function filterAssets(q) {
+  const ql = String(q||'').toLowerCase().trim();
+  const icons = document.getElementById('asset-icons');
+  const texts = document.getElementById('asset-texts');
+  const images = document.getElementById('asset-images');
+  if (!icons || !texts || !images) return;
+  const filterNode = (container, matcher) => {
+    Array.from(container.children).forEach(child => {
+      const label = child.querySelector('.asset-label')?.textContent?.toLowerCase()||'';
+      child.style.display = matcher(label) ? '' : 'none';
+    });
+  };
+  filterNode(icons, l => l.includes(ql));
+  filterNode(texts, l => l.includes(ql));
+  filterNode(images, l => l.includes(ql));
 }
 
 function renderPagesPanel() {
@@ -6439,9 +6489,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const wrap = document.getElementById('canvas-wrap');
   wrap?.addEventListener('dragover', e => {
-    if (Array.from(e.dataTransfer?.types || []).includes('Files')) e.preventDefault();
+    const types = Array.from(e.dataTransfer?.types || []);
+    if (types.includes('Files') || types.includes('application/x-craft-asset') || types.includes('text/plain')) e.preventDefault();
   });
   wrap?.addEventListener('drop', async e => {
+    // Handle asset drops (from the Assets panel)
+    try {
+      const raw = e.dataTransfer?.getData('application/x-craft-asset') || e.dataTransfer?.getData('text/plain');
+      if (raw) {
+        // support 'asset:type:id' or JSON payload
+        let payload = null;
+        if (raw.startsWith('asset:')) {
+          const parts = raw.split(':');
+          payload = {type: parts[1], id: parts.slice(2).join(':')};
+        } else {
+          try { payload = JSON.parse(raw); } catch (_) { /* ignore */ }
+        }
+        if (payload && payload.type) {
+          e.preventDefault();
+          const rect = wrap.getBoundingClientRect();
+          const cx = e.clientX - rect.left;
+          const cy = e.clientY - rect.top;
+          const hit = canvasToFrame(cx, cy);
+          const frameId = hit.frameId || state.activeFrame;
+          if (payload.type === 'icon') insertIconAssetAt(payload.id, frameId, Math.max(0, Math.round(hit.lx - 24)), Math.max(0, Math.round(hit.ly - 24)));
+          if (payload.type === 'textPreset') insertTextPresetAt(payload.id, frameId, Math.max(0, Math.round(hit.lx)), Math.max(0, Math.round(hit.ly)));
+          if (payload.type === 'image') insertImageFromAssetAt(payload.id, frameId, Math.max(0, Math.round(hit.lx)), Math.max(0, Math.round(hit.ly)));
+          return;
+        }
+      }
+    } catch (_) {}
     const files = e.dataTransfer?.files;
     if (!files || files.length === 0) return;
     e.preventDefault();
