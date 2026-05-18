@@ -2744,6 +2744,22 @@ function ungroupSelected() {
   notify('Ungrouped selection', 'success');
 }
 
+function moveSelectedToFrame(frameId) {
+  if (!frameId) return;
+  const frame = state.frames.find(f => f.id === frameId);
+  if (!frame) return;
+  const sel = state.elements.filter(e => state.selected.includes(e.id) && !isLocked(e));
+  if (!sel.length) { notify('No unlocked layers selected', 'warn'); return; }
+  sel.forEach(el => {
+    el.frameId = frameId;
+    const clamped = clampMoveToFrame(frame, el, el.x, el.y);
+    el.x = clamped.x; el.y = clamped.y;
+  });
+  state.activeFrame = frameId;
+  pushHistory(); render(); renderLayers(); renderProps(); queueAutosave();
+  notify(`Moved ${sel.length} layer(s) to frame ${frame.name||frame.id}`);
+}
+
 function copyStyleSelected() {
   if (state.selected.length !== 1) { notify('Select one layer to copy style', 'warn'); return; }
   const el = state.elements.find(e => e.id === state.selected[0]);
@@ -2964,15 +2980,21 @@ function redo() {
 function renderLayers() {
   const body = document.getElementById('left-panel-body');
   if (!body || body.dataset.tab !== 'layers') return;
-
   const icons = {rect:'▭',ellipse:'◯',text:'T',line:'—',image:'⊟',svg:'◆',frame:'⊡'};
-  let html = '';
+  // Controls: Group / Ungroup / Move to Frame
+  const frames = getFramesForCurrentPage();
+  const frameOptions = frames.map(f=>`<option value="${f.id}" ${f.id===state.activeFrame?'selected':''}>${f.name||f.id}</option>`).join('');
+  let html = `<div style="padding:6px 8px;display:flex;gap:6px;align-items:center">
+    <button class="tbtn" onclick="groupSelected()" style="font-size:11px;padding:6px">Group</button>
+    <button class="tbtn" onclick="ungroupSelected()" style="font-size:11px;padding:6px">Ungroup</button>
+    <select onchange="moveSelectedToFrame(this.value)" style="font-size:11px;padding:6px;border-radius:6px">${frameOptions}</select>
+  </div>`;
   [...getElementsForCurrentPage()].reverse().forEach(el => {
     const sel = state.selected.includes(el.id);
     const group = el.groupId ? getGroupById(el.groupId) : null;
     html += `<div class="layer-item ${sel?'selected':''}" onclick="selectFromLayer('${el.id}')" data-id="${el.id}">
       <span class="layer-icon" style="font-size:11px">${icons[el.type]||'□'}</span>
-      <span class="layer-name">${el.name||el.type}${group ? ` · ${group.name}` : ''}</span>
+      <span class="layer-name">${el.name||el.type}${group ? ` · ${group.name}` : ''} <span style="opacity:.5;font-size:11px;margin-left:6px">[${el.frameId||''}]</span></span>
       <span class="layer-vis" onclick="toggleLock(event,'${el.id}')" title="Lock">${el.locked?'🔒':'🔓'}</span>
       <span class="layer-vis" onclick="toggleVis(event,'${el.id}')">👁</span>
     </div>`;
@@ -3394,13 +3416,13 @@ function renderAssetLibrary() {
   const body = document.getElementById('left-panel-body');
   if (!body) return;
   const icons = getIconAssetItems();
-  const iconsHtml = icons.map(([label,key])=>`<div class="asset-item" draggable="true" ondragstart="assetDragStart(event,'icon','${key}')" onclick="insertIconAsset('${key}')"><div class="asset-icon">${ICON_LIBRARY[key] ? `<svg viewBox="${ICON_LIBRARY[key].viewBox}" fill="currentColor">${ICON_LIBRARY[key].content}</svg>` : '◼'}</div><div class="asset-label">${label}</div></div>`).join('');
+  const iconsHtml = icons.map(([label,key])=>`<div class="asset-item" title="${label}" draggable="true" ondragstart="assetDragStart(event,'icon','${key}')" onclick="insertIconAsset('${key}')"><div class="asset-icon">${ICON_LIBRARY[key] ? `<svg viewBox="${ICON_LIBRARY[key].viewBox}" fill="currentColor">${ICON_LIBRARY[key].content}</svg>` : '◼'}</div><div class="asset-label">${label}</div></div>`).join('');
 
   const images = state.elements.filter(e=>e.type==='image');
-  const imagesHtml = images.length ? images.map(img=>`<div class="asset-item" draggable="true" ondragstart="assetDragStart(event,'image','${img.id}')" onclick="insertImageFromAsset('${img.id}')"><div class="asset-icon">${img.src?`<img src="${img.src}" style="max-width:100%;max-height:40px;object-fit:cover;border-radius:4px">`:'🖼'}</div><div class="asset-label">${img.name||img.id}</div></div>`).join('') : '<div style="padding:12px;color:var(--txt2);font-size:12px">No image assets yet. Import images via the toolbar.</div>';
+  const imagesHtml = images.length ? images.map(img=>`<div class="asset-item" title="${img.name||img.id}" draggable="true" ondragstart="assetDragStart(event,'image','${img.id}')" onclick="insertImageFromAsset('${img.id}')"><div class="asset-icon">${img.src?`<img src="${img.src}" style="max-width:100%;max-height:40px;object-fit:cover;border-radius:4px">`:'🖼'}</div><div class="asset-label">${img.name||img.id}</div></div>`).join('') : '<div style="padding:12px;color:var(--txt2);font-size:12px">No image assets yet. Import images via the toolbar.</div>';
 
   const textPresets = getTextPresetItems();
-  const textHtml = textPresets.map(([label,key])=>`<div class="asset-item" draggable="true" ondragstart="assetDragStart(event,'textPreset','${key}')" onclick="insertTextPreset('${key}')"><div class="asset-icon">T</div><div class="asset-label">${label}</div></div>`).join('');
+  const textHtml = textPresets.map(([label,key])=>`<div class="asset-item" title="${label}" draggable="true" ondragstart="assetDragStart(event,'textPreset','${key}')" onclick="insertTextPreset('${key}')"><div class="asset-icon">T</div><div class="asset-label">${label}</div></div>`).join('');
 
   body.innerHTML = `
     <div style="padding:8px;display:flex;gap:6px;align-items:center"><input id="asset-search" placeholder="Search assets…" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--txt0)" oninput="filterAssets(this.value)"/></div>
@@ -3439,7 +3461,18 @@ function insertIconAssetAt(key, frameId, x, y) {
   const icon = ICON_LIBRARY[key];
   if (!icon) return;
   const id = 'el' + (++state.nextId);
-  const el = {id, type:'svg', name:icon.label||'Icon', svgMarkup:`<svg viewBox="${icon.viewBox}" xmlns="http://www.w3.org/2000/svg">${icon.content}</svg>`, frameId, x, y, w:48, h:48, stroke:'#111827', strokeW:1.5};
+  const el = {id, type:'svg', name:icon.label||'Icon', svgMarkup:`<svg viewBox="${icon.viewBox}" xmlns="http://www.w3.org/2000/svg">${icon.content}</svg>`, frameId, x: x||40, y: y||40, w:48, h:48, stroke:'#111827', strokeW:1.5};
+  // Snap to grid if enabled
+  if (state.snapOn) {
+    const step = 8;
+    el.x = Math.round(el.x / step) * step;
+    el.y = Math.round(el.y / step) * step;
+  }
+  // Clamp to frame bounds
+  const frame = state.frames.find(f=>f.id===frameId) || getActiveFrameRecord();
+  const clamped = clampMoveToFrame(frame, el, el.x, el.y);
+  el.x = clamped.x; el.y = clamped.y;
+
   state.elements.push(el);
   state.selected = [id]; render(); renderLayers(); renderProps(); pushHistory(); queueAutosave();
 }
@@ -3447,14 +3480,30 @@ function insertIconAssetAt(key, frameId, x, y) {
 function insertTextPresetAt(key, frameId, x, y) {
   const def = TEXT_PRESET_LIBRARY[key];
   if (!def) return;
-  insertTextLayer({frameId, x, y, text:def.text, fontSize:def.fontSize, fontWeight:def.fontWeight, w:def.w, h:def.h, textAlign:def.textAlign, fill:def.fill});
+  const options = {frameId, x, y, text:def.text, fontSize:def.fontSize, fontWeight:def.fontWeight, w:def.w, h:def.h, textAlign:def.textAlign, fill:def.fill, autoEdit:true};
+  // apply snap if enabled
+  if (state.snapOn && Number.isFinite(options.x) && Number.isFinite(options.y)) {
+    const step = 8;
+    options.x = Math.round(options.x / step) * step;
+    options.y = Math.round(options.y / step) * step;
+  }
+  // clamp will be handled inside insertTextLayer via findFreeTextPosition, but ensure within frame
+  insertTextLayer(options);
 }
 
 function insertImageFromAssetAt(id, frameId, x, y) {
   const src = state.elements.find(e=>e.id===id && e.type==='image');
   if (!src) return;
   const nid = 'el' + (++state.nextId);
-  const ne = {...src, id: nid, frameId, x, y};
+  const ne = {...src, id: nid, frameId, x: x||20, y: y||20};
+  if (state.snapOn) {
+    const step = 8;
+    ne.x = Math.round(ne.x / step) * step;
+    ne.y = Math.round(ne.y / step) * step;
+  }
+  const frame = state.frames.find(f=>f.id===frameId) || getActiveFrameRecord();
+  const clamped = clampMoveToFrame(frame, ne, ne.x, ne.y);
+  ne.x = clamped.x; ne.y = clamped.y;
   state.elements.push(ne);
   state.selected = [nid]; render(); renderLayers(); renderProps(); pushHistory(); queueAutosave();
 }
