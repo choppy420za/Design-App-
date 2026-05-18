@@ -25,6 +25,17 @@
   --sidebar-w:220px; --panel-w:240px; --toolbar-h:40px; --titlebar-h:36px;
   --figma-toolbar-h:48px;
 }
+/* Light theme overrides (toggle by setting data-theme="light" on <html>) */
+:root[data-theme="light"]{
+  --bg0:#ffffff; --bg1:#f6f7f8; --bg2:#eef1f4; --bg3:#e6eaee; --bg4:#dfe6ec;
+  --border:#00000012; --border2:#0000001e; --border3:#00000030;
+  --txt0:#0f172a; --txt1:#334155; --txt2:#475569; --txt3:#94a3b8;
+  --accent:#0b74d1; --accent2:#0f8ef3; --accentbg:#0b74d118;
+  --green:#059669; --red:#b91c1c; --orange:#d97706; --purple:#7c3aed;
+  --yellow:#f59e0b; --pink:#db2777;
+  --vsc-accent:#0b74d1; --vsc-green:#059669; --vsc-orange:#c75a3e;
+  --vsc-purple:#7c3aed; --vsc-yellow:#d4c067; --vsc-red:#c2410c;
+}
 html,body{height:100%;overflow:hidden;font-family:var(--sans);background:var(--bg0);color:var(--txt0);font-size:12px}
 button{font-family:var(--sans);cursor:pointer;border:none;background:none;color:inherit}
 input,select,textarea{font-family:var(--sans);color:var(--txt0);background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r4);outline:none;font-size:11px}
@@ -671,6 +682,7 @@ kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;bo
   </div>
   <div class="titlebar-right">
     <button class="tbtn" onclick="showShortcuts()" title="Keyboard Shortcuts">⌨</button>
+    <button class="tbtn" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
     <button class="tbtn" onclick="exportProjectJSON()">Export JSON</button>
     <button class="tbtn" onclick="exportProject()">Export HTML</button>
     <button class="tbtn tbtn-accent" onclick="runPreview()">▶ Run</button>
@@ -1093,6 +1105,7 @@ const state = {
   history: [], historyIdx: -1,
   gridOn: false, rulersOn: false,
   snapOn: true,
+  theme: 'dark',
   nextId: 100,
   dragging: false, dragEl: null, dragStart: null, dragElStart: null,
   dragSelectionStart: null,
@@ -1547,6 +1560,7 @@ function saveProject() {
     previewMode: state.previewMode,
     previewDevice: state.previewDevice,
     previewInspect: state.previewInspect,
+    theme: state.theme,
     assetSearch: state.assetSearch,
     customComponents: state.customComponents,
     layoutGap: state.layoutGap,
@@ -1584,6 +1598,7 @@ function loadProject() {
     state.previewMode = data.previewMode || state.previewMode;
     state.previewDevice = data.previewDevice || state.previewDevice;
     state.previewInspect = !!data.previewInspect;
+    state.theme = data.theme || state.theme;
     state.assetSearch = data.assetSearch || state.assetSearch;
     state.customComponents = Array.isArray(data.customComponents) ? data.customComponents : state.customComponents;
     state.layoutGap = Number.isFinite(data.layoutGap) ? Math.max(0, data.layoutGap) : state.layoutGap;
@@ -1593,6 +1608,23 @@ function loadProject() {
   } catch (_) {
     return false;
   }
+}
+
+// Theme helpers
+function applyTheme(t) {
+  const theme = t || state.theme || 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  document.documentElement.classList.toggle('light', theme === 'light');
+  state.theme = theme;
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = theme === 'light' ? '☀' : '🌙';
+}
+
+function toggleTheme() {
+  const next = state.theme === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+  queueAutosave();
+  notify(next === 'light' ? 'Switched to light theme' : 'Switched to dark theme');
 }
 
 function createElDOM(el) {
@@ -6300,6 +6332,7 @@ function notify(msg, type='info') {
 // ═══════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
   const restored = loadProject();
+  applyTheme(state.theme);
   pushHistory();
   render();
   if (state.gridOn) document.getElementById('grid-overlay').classList.add('show');
