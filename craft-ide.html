@@ -801,8 +801,9 @@ kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;bo
       <div class="panel-tabs">
         <div class="ptab active" onclick="switchLeftTab('layers',this)">Layers</div>
         <div class="ptab" onclick="switchLeftTab('assets',this)">Assets</div>
-          <div class="ptab" onclick="switchLeftTab('pages',this)">Pages</div>
-          <div class="ptab" onclick="switchLeftTab('frames',this)">Frames</div>
+        <div class="ptab" onclick="switchLeftTab('library',this)">Library</div>
+        <div class="ptab" onclick="switchLeftTab('pages',this)">Pages</div>
+        <div class="ptab" onclick="switchLeftTab('frames',this)">Frames</div>
       </div>
       <div class="panel-content" id="left-panel-body"></div>
     </div>
@@ -940,6 +941,7 @@ kbd{font-family:var(--mono);font-size:10px;background:#3c3c3c;padding:2px 6px;bo
         <div class="preview-bar-right">
           <button class="tbtn" id="preview-inspect-btn" style="font-size:10px;padding:3px 8px" onclick="togglePreviewInspect()">Inspect</button>
           <button class="tbtn" style="font-size:10px;padding:3px 8px" onclick="copySelectionCodeBundle()">Snippet</button>
+          <button class="tbtn" style="font-size:10px;padding:3px 8px" onclick="saveSelectionAsSnippet()">Save Snippet</button>
           <button class="tbtn" style="font-size:10px;padding:3px 8px" onclick="copyActiveCodeFile()">Copy File</button>
           <button class="tbtn" style="font-size:10px;padding:3px 8px" onclick="downloadActiveCodeFile()">Save File</button>
           <button class="tbtn" style="font-size:10px;padding:3px 8px" onclick="validateCode()">✓ Lint</button>
@@ -1107,6 +1109,7 @@ const state = {
   clipboard: null,
   styleClipboard: null,
   customComponents: [],
+  savedSnippets: [],
   groups: [],
   hoveredId: null,
   frames: [
@@ -1580,6 +1583,7 @@ function saveProject() {
     theme: state.theme,
     assetSearch: state.assetSearch,
     customComponents: state.customComponents,
+    savedSnippets: state.savedSnippets,
     layoutGap: state.layoutGap,
     groups: state.groups
   };
@@ -1620,6 +1624,7 @@ function loadProject() {
     state.theme = data.theme || state.theme;
     state.assetSearch = data.assetSearch || state.assetSearch;
     state.customComponents = Array.isArray(data.customComponents) ? data.customComponents : state.customComponents;
+    state.savedSnippets = Array.isArray(data.savedSnippets) ? data.savedSnippets : state.savedSnippets;
     state.layoutGap = Number.isFinite(data.layoutGap) ? Math.max(0, data.layoutGap) : state.layoutGap;
     state.groups = Array.isArray(data.groups) ? data.groups : state.groups;
     cleanupGroups();
@@ -3526,6 +3531,8 @@ function switchLeftTab(tab, el) {
     renderLayers();
   } else if (tab === 'assets') {
     renderAssetLibrary();
+  } else if (tab === 'library') {
+    renderLibraryPanel();
   } else if (tab === 'pages') {
     renderPagesPanel();
   } else if (tab === 'frames') {
@@ -3676,6 +3683,113 @@ function getIconAssetItems() {
 
 function getCustomComponentItems() {
   return state.customComponents.map(component => [component.name, component.id, '', 'customComponent']);
+}
+
+function getActiveFrameDesignTokens() {
+  const frame = getActiveFrameRecord() || state.frames[0];
+  if (!frame) return {colors: [], fonts: []};
+  const frameEls = state.elements.filter(item => item.frameId === frame.id);
+  const tokens = buildTokenJS(collectDesignTokens(frame, frameEls));
+  return {
+    colors: Object.entries(tokens.colors || {}),
+    fonts: Object.entries(tokens.fonts || {})
+  };
+}
+
+function renderLibraryPanel() {
+  const body = document.getElementById('left-panel-body');
+  if (!body) return;
+  const tokens = getActiveFrameDesignTokens();
+  body.innerHTML = `
+    <div class="asset-section">
+      <div class="asset-section-hd">Library Actions</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:0 8px 8px">
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="saveSelectionAsComponent()">Save Component</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="saveSelectionAsSnippet()">Save Snippet</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="appendSelectionBundleToCode()">Append Selection</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="downloadDesignTokensJSON()">Export Tokens</button>
+      </div>
+    </div>
+    <div class="asset-section">
+      <div class="asset-section-hd">Workspace Summary</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 8px 8px">
+        <div style="padding:10px;border-radius:10px;background:var(--bg2)">
+          <div style="font-size:11px;color:var(--txt2)">Components</div>
+          <div style="font-size:18px;font-weight:800">${state.customComponents.length}</div>
+        </div>
+        <div style="padding:10px;border-radius:10px;background:var(--bg2)">
+          <div style="font-size:11px;color:var(--txt2)">Snippets</div>
+          <div style="font-size:18px;font-weight:800">${state.savedSnippets.length}</div>
+        </div>
+        <div style="padding:10px;border-radius:10px;background:var(--bg2)">
+          <div style="font-size:11px;color:var(--txt2)">Tokens</div>
+          <div style="font-size:18px;font-weight:800">${tokens.colors.length + tokens.fonts.length}</div>
+        </div>
+      </div>
+    </div>
+    <div class="asset-section">
+      <div class="asset-section-hd">Active Frame Tokens</div>
+      <div style="padding:0 8px 8px">
+        <div style="font-size:11px;color:var(--txt2);margin-bottom:6px">Colors</div>
+        ${tokens.colors.length ? `
+          <div style="display:grid;gap:6px">
+            ${tokens.colors.slice(0, 12).map(([name, value]) => `
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:var(--bg2)">
+                <div style="width:14px;height:14px;border-radius:999px;background:${escapeAttr(value)};border:1px solid rgba(148,163,184,.4)"></div>
+                <div style="font-size:11px;font-family:var(--mono);flex:1">${escapeHtml(name)}</div>
+                <div style="font-size:11px;color:var(--txt2);font-family:var(--mono)">${escapeHtml(value)}</div>
+              </div>`).join('')}
+          </div>` : `<div style="font-size:11px;color:var(--txt2)">No color tokens yet.</div>`}
+        <div style="font-size:11px;color:var(--txt2);margin:10px 0 6px">Fonts</div>
+        ${tokens.fonts.length ? `
+          <div style="display:grid;gap:6px">
+            ${tokens.fonts.slice(0, 8).map(([name, value]) => `
+              <div style="padding:6px 8px;border-radius:8px;background:var(--bg2)">
+                <div style="font-size:11px;font-family:var(--mono)">${escapeHtml(name)}</div>
+                <div style="font-size:11px;color:var(--txt2);margin-top:2px">${escapeHtml(value)}</div>
+              </div>`).join('')}
+          </div>` : `<div style="font-size:11px;color:var(--txt2)">No font tokens yet.</div>`}
+      </div>
+    </div>
+    <div class="asset-section">
+      <div class="asset-section-hd">Components</div>
+      <div style="padding:0 8px 8px">
+        ${state.customComponents.length ? state.customComponents.map(component => `
+          <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+              <div>
+                <div style="font-size:12px;font-weight:700">${escapeHtml(component.name)}</div>
+                <div style="font-size:11px;color:var(--txt2)">${component.w} × ${component.h}</div>
+              </div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+                <button class="tbtn" style="font-size:10px;padding:4px 6px" onclick="insertCustomComponent('${component.id}')">Insert</button>
+                <button class="tbtn" style="font-size:10px;padding:4px 6px" onclick="renameCustomComponent('${component.id}')">Rename</button>
+                <button class="tbtn" style="font-size:10px;padding:4px 6px" onclick="copyComponentJSON('${component.id}')">Copy JSON</button>
+              </div>
+            </div>
+          </div>`).join('') : `<div style="font-size:11px;color:var(--txt2)">Save a selection as a component to build your design system.</div>`}
+      </div>
+    </div>
+    <div class="asset-section">
+      <div class="asset-section-hd">Saved Snippets</div>
+      <div style="padding:0 8px 8px">
+        ${state.savedSnippets.length ? state.savedSnippets.map(snippet => `
+          <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+              <div>
+                <div style="font-size:12px;font-weight:700">${escapeHtml(snippet.name)}</div>
+                <div style="font-size:11px;color:var(--txt2)">${escapeHtml(snippet.sectionClass || 'snippet')}</div>
+              </div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+                <button class="tbtn" style="font-size:10px;padding:4px 6px" onclick="insertSavedSnippetIntoCode('${snippet.id}')">Add to Code</button>
+                <button class="tbtn" style="font-size:10px;padding:4px 6px" onclick="copySavedSnippet('${snippet.id}')">Copy</button>
+                <button class="tbtn" style="font-size:10px;padding:4px 6px" onclick="removeSavedSnippet('${snippet.id}')">Delete</button>
+              </div>
+            </div>
+          </div>`).join('') : `<div style="font-size:11px;color:var(--txt2)">Save snippets from selected layers for reuse in code.</div>`}
+      </div>
+    </div>
+  `;
 }
 
 function getTextPresetItems() {
@@ -3860,6 +3974,7 @@ function renderAssetLibrary() {
         <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="copyCodeBundleToClipboard()">Copy Bundle</button>
         <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="downloadCodeBundle()">Save Bundle</button>
         <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="copySelectionCodeBundle()">Copy Snippet</button>
+        <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="saveSelectionAsSnippet()">Save Snippet</button>
         <button class="tbtn" style="font-size:10px;padding:6px 4px" onclick="downloadDesignTokensJSON()">Export Tokens</button>
         <button class="tbtn" style="font-size:10px;padding:6px 4px;grid-column:span 2" onclick="saveSelectionAsComponent()">Save Selection as Component</button>
         <button class="tbtn" style="font-size:10px;padding:6px 4px;grid-column:span 2" onclick="runPreview()">Open Preview</button>
@@ -4283,6 +4398,32 @@ async function copySelectionCodeBundle() {
   await copyTextToClipboard(buildSelectionBundleText(bundle), `${bundle.name} bundle copied`);
 }
 
+function saveSelectionAsSnippet() {
+  const bundle = buildSelectionSyncBundle();
+  if (!bundle) return;
+  const defaultName = `${bundle.name} Snippet`;
+  const nextName = prompt('Snippet name', defaultName);
+  if (nextName === null) return;
+  const cleaned = nextName.trim();
+  if (!cleaned) {
+    notify('Snippet name cannot be empty', 'warn');
+    return;
+  }
+  const snippetId = 'snp' + (++state.nextId);
+  state.savedSnippets.unshift({
+    id: snippetId,
+    name: cleaned,
+    sectionClass: bundle.sectionClass,
+    html: bundle.html,
+    css: bundle.css,
+    js: bundle.js,
+    createdAt: new Date().toISOString()
+  });
+  queueAutosave();
+  if (document.getElementById('left-panel-body')?.dataset.tab === 'library') renderLibraryPanel();
+  notify(`${cleaned} saved to snippets`, 'success');
+}
+
 function appendSnippetToHTMLDocument(source, snippet) {
   const content = String(source || '');
   if (/<\/body>/i.test(content)) return content.replace(/<\/body>/i, `\n${snippet}\n</body>`);
@@ -4300,6 +4441,60 @@ function appendSelectionBundleToCode() {
   refreshPreview();
   queueAutosave();
   notify(`${bundle.name} appended to code files`, 'success');
+}
+
+function renameCustomComponent(id) {
+  const component = state.customComponents.find(item => item.id === id);
+  if (!component) return;
+  const nextName = prompt('Rename component', component.name || 'Component');
+  if (nextName === null) return;
+  const cleaned = nextName.trim();
+  if (!cleaned) {
+    notify('Component name cannot be empty', 'warn');
+    return;
+  }
+  component.name = cleaned;
+  state.elements.forEach(el => {
+    if (el.componentId === id) el.componentName = cleaned;
+  });
+  queueAutosave();
+  renderLayers();
+  if (document.getElementById('left-panel-body')?.dataset.tab === 'assets') renderAssetLibrary();
+  if (document.getElementById('left-panel-body')?.dataset.tab === 'library') renderLibraryPanel();
+  notify(`Renamed component to ${cleaned}`, 'success');
+}
+
+async function copyComponentJSON(id) {
+  const component = state.customComponents.find(item => item.id === id);
+  if (!component) return;
+  await copyTextToClipboard(JSON.stringify(component, null, 2), `${component.name} JSON copied`);
+}
+
+function insertSavedSnippetIntoCode(id) {
+  const snippet = state.savedSnippets.find(item => item.id === id);
+  if (!snippet) return;
+  state.codeFiles.html = appendSnippetToHTMLDocument(state.codeFiles.html || '', `<!-- ${snippet.name} -->\n${snippet.html}`);
+  state.codeFiles.css = `${String(state.codeFiles.css || '').trim()}\n\n/* ${snippet.name} */\n${snippet.css}`.trim();
+  state.codeFiles.js = `${String(state.codeFiles.js || '').trim()}\n\n// ${snippet.name}\n${snippet.js}`.trim();
+  loadCodeFile(state.activeCodeFile);
+  refreshPreview();
+  queueAutosave();
+  notify(`${snippet.name} added to code`, 'success');
+}
+
+async function copySavedSnippet(id) {
+  const snippet = state.savedSnippets.find(item => item.id === id);
+  if (!snippet) return;
+  await copyTextToClipboard(buildSelectionBundleText(snippet), `${snippet.name} copied`);
+}
+
+function removeSavedSnippet(id) {
+  const snippet = state.savedSnippets.find(item => item.id === id);
+  if (!snippet) return;
+  state.savedSnippets = state.savedSnippets.filter(item => item.id !== id);
+  queueAutosave();
+  if (document.getElementById('left-panel-body')?.dataset.tab === 'library') renderLibraryPanel();
+  notify(`Removed ${snippet.name}`, 'success');
 }
 
 function downloadDesignTokensJSON() {
@@ -4518,6 +4713,7 @@ async function importProjectJSON(file) {
   state.theme = data.theme || state.theme;
   state.assetSearch = data.assetSearch || '';
   state.customComponents = Array.isArray(data.customComponents) ? data.customComponents : state.customComponents;
+  state.savedSnippets = Array.isArray(data.savedSnippets) ? data.savedSnippets : state.savedSnippets;
   state.layoutGap = Number.isFinite(data.layoutGap) ? Math.max(0, data.layoutGap) : state.layoutGap;
   state.groups = Array.isArray(data.groups) ? data.groups : state.groups;
   cleanupGroups();
@@ -4766,6 +4962,7 @@ function saveSelectionAsComponent() {
   });
   queueAutosave();
   if (document.getElementById('left-panel-body')?.dataset.tab === 'assets') renderAssetLibrary();
+  if (document.getElementById('left-panel-body')?.dataset.tab === 'library') renderLibraryPanel();
   notify(`Saved ${cleaned} to My Components`, 'success');
 }
 
@@ -4775,6 +4972,7 @@ function removeCustomComponent(id) {
   state.customComponents = state.customComponents.filter(item => item.id !== id);
   queueAutosave();
   if (document.getElementById('left-panel-body')?.dataset.tab === 'assets') renderAssetLibrary();
+  if (document.getElementById('left-panel-body')?.dataset.tab === 'library') renderLibraryPanel();
   notify(`Removed ${component.name}`, 'success');
 }
 
@@ -6525,6 +6723,7 @@ function exportProjectJSON() {
       theme: state.theme,
       assetSearch: state.assetSearch,
       customComponents: state.customComponents,
+      savedSnippets: state.savedSnippets,
       layoutGap: state.layoutGap,
       groups: state.groups
     }
@@ -7158,6 +7357,8 @@ registerPlugin({id:'core', name:'Core Commands', commands:[
   {id:'core.export.selection.svg', title:'Export Selection as SVG', run:()=>exportSelectionAsSVG()},
   {id:'core.open.prefs', title:'Open Preferences', run:()=>openPreferences()},
   {id:'core.run.diagnostics', title:'Run Diagnostics', run:()=>runDiagnostics()},
+  {id:'core.save.snippet', title:'Save Selection as Snippet', run:()=>saveSelectionAsSnippet()},
+  {id:'core.append.selection', title:'Append Selection to Code', run:()=>appendSelectionBundleToCode()},
   {id:'core.template.workspace', title:'Insert Workspace Board', run:()=>insertTemplate('workspaceBoard')},
   {id:'core.template.mobile', title:'Insert Mobile App Starter', run:()=>insertTemplate('mobileAppStarter')},
   {id:'core.template.creator', title:'Insert Creator Landing', run:()=>insertTemplate('creatorLanding')},
